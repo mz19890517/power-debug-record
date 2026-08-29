@@ -3,6 +3,7 @@ package com.powerdebug.record.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.powerdebug.record.data.db.AppDatabase
+import com.powerdebug.record.data.db.DebugLog
 import com.powerdebug.record.data.db.DeletedItem
 import kotlinx.coroutines.test.runTest
 import org.json.JSONArray
