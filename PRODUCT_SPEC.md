@@ -18,7 +18,7 @@
 
 ## 2. 铁律（任何实现都不得违反）
 
-1. **签名永久一致**：所有历史版本靠同一 keystore 签名实现覆盖安装。发布必须验签（SHA-256 指纹恒定），禁止替换/删除/改 alias 或密码。原始 keystore 与密码**禁止**写进代码/README/提交信息。
+1. **签名永久一致（v2.26 起新软件分家）**：v2.26 起本线为新软件/新仓库（包名 `com.powerdebug.record`，老包 ≤v2.25 用户需卸载重装），改用全新 keystore，其后所有版本靠同一 keystore 签名实现覆盖安装。发布必须验签（SHA-256 指纹恒定：`71651EC50784C17E17758EE234373C19095D4BD899ED931174DD2DFD352178F8`），禁止替换/删除/改 alias 或密码。原始 keystore 与密码**禁止**写进代码/README/提交信息。
 2. **绝不 fallbackToDestructiveMigration**：Room 迁移链必须完整、纯 SQL、可重复，任何版本升级不得丢库。
 3. **日志"测试人员"绝不回落登录账号**：日志与测试结果的人员归属取"当前调试员"（见 4.6），删除的调试员不改历史日志。
 4. **故障已解决不自动过关，必须人工复测**：某测试项关联的故障被标"已解决"后，该测试项仍保持"未通过/待复测"，只有测试员在清单里点"通过"才转绿（复测✓自动把仍在未解决状态关联故障标为已解决）。
@@ -265,7 +265,7 @@
 - 技术栈：Kotlin + Room + 传统 View + Material 组件；minSdk 28，targetSdk 34。
 - 仓库即交付物：代码、CI、文档都在。**只在 GitHub Actions 构建**（本地无 gradle wrapper / Android SDK，禁止本地 assembleDebug）；产物名 `power-debug-debug-apk`。
 - CI 必须 `clean`（旧 Gradle 缓存曾导致 APK 未重编、DB 迁移错乱），push 到 main 自动触发。
-- 签名：`app/signing/powerdebug.keystore.zip`（加密压缩已入库，解压密码不在仓库，CI Secrets 注入：SIGNING_ZIP_PASSWORD / SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD）；alias=powerdebug；**发版必验签**（SHA-256 指纹 `b02575b6d7e5c4d98c3b19f9939dd89e66193b56e1fdaacdb55e4cfabc1a98d6`）。
+- 签名：`app/signing/powerdebug.keystore.zip`（加密压缩已入库，解压密码不在仓库，CI Secrets 注入：SIGNING_ZIP_PASSWORD / SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD）；alias=powerdebug；**发版必验签**（SHA-256 指纹 `71651EC50784C17E17758EE234373C19095D4BD899ED931174DD2DFD352178F8`）；包名 `com.powerdebug.record`（v2.26 起新软件分家）。
 - 版本：DB version+1 写纯 SQL 迁移 + 备份 schema+1 + 解析/合并三处同步 + README 记录。发布节奏见铁律 8。
 - **新实现必须补**：为核心状态流加**自动化回归测试**（saveLog 命中联动 / generateIndependentLogs / deleteLog 五种模式 / recomputePlannedState / healGhostFailures / applyMerge 含墓碑"新者胜"冲突）并在 CI 跑起来——现状是"只保证编译不保证行为"。
 
@@ -322,4 +322,4 @@
 - [ ] 项目/柜子/类型的导出、全量导出、JSON 备份恢复
 - [ ] 调试员归属绝不回落登录账号
 - [ ] 文案全走 strings.xml；中文注释
-- [ ] 签名一致可覆盖安装；CI clean + 回归测试全绿
+- [ ] 签名一致可覆盖安装（新线 v2.26 起）；CI clean + 回归测试全绿

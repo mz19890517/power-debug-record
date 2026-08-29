@@ -11,7 +11,7 @@
 
 ## ⚠️ 签名（最重要的约束）
 
-所有历史版本靠**同一签名**才能覆盖安装。签名材料：
+**v2.26 起为新软件、新仓库、新签名**：包名 `com.powerdebug.record`，与老项目 power-cabinet-debug-log（≤v2.25、包名 com.fieldlog.powerdebug）正式分家，签名链在 v2.26 定点重置，老包用户需卸载重装；**本线所有后续版本靠同一签名覆盖安装**。签名材料：
 
 - `app/signing/powerdebug.keystore.zip` —— keystore 的加密压缩包（已入库）
 - **解压密码不在仓库里，需要时向项目所有者（用户本人）索取**
@@ -19,7 +19,7 @@
 - 原始 `powerdebug.keystore` 被 .gitignore 排除，但项目所有者本机留有一份
 
 规则：
-1. 永远不要替换/删除 keystore，不要改动 alias(powerdebug) 或密码配置
+1. 永远不要替换/删除 keystore（新线 v2.26 启用，alias=powerdebug，SHA-256 `71651EC50784C17E17758EE234373C19095D4BD899ED931174DD2DFD352178F8`），不要改动 alias 或密码配置
 2. 永远不要把任何密码明文写进代码、README 或提交信息
 3. 若用户忘记密码：keystore 无法恢复，签名链断裂 = 全体用户需卸载重装。提醒用户平时自备份
 

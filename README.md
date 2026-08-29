@@ -57,7 +57,7 @@
 
 ## 签名说明
 
-所有版本（debug/release）统一使用固定密钥（alias: powerdebug），保证任意版本可直接覆盖安装。
+**v2.26 起是新软件/新签名**：包名 `com.powerdebug.record`，与老项目（≤v2.25、`com.fieldlog.powerdebug`）正式分家，老版本用户需卸载后安装新包。本线所有版本（debug/release）统一使用固定密钥（alias: powerdebug），保证本线任意版本可直接覆盖安装。
 
 **密钥保管方式**：仓库内只有加密压缩包 `app/signing/powerdebug.keystore.zip`，解压密码不在仓库中（由项目所有者掌握）。构建时由 GitHub Actions Secrets 自动完成：`SIGNING_ZIP_PASSWORD` 解压密钥、`SIGNING_STORE_PASSWORD`/`SIGNING_KEY_PASSWORD` 注入签名。原始 .keystore 文件不入库。
 

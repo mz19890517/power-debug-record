@@ -20,7 +20,7 @@
 
 ## 2. 铁律（任何实现都不得违反）
 
-1. **签名永久一致**：所有历史/未来版本靠**同一 keystore**（alias=powerdebug）签名保证覆盖安装。发布必须验签（SHA-256 指纹 `b02575b6d7e5c4d98c3b19f9939dd89e66193b56e1fdaacdb55e4cfabc1a98d6` 恒定）。禁止替换/删除 keystore、禁止改 alias 或密码。实名密钥材料（加密压缩包 `app/signing/powerdebug.keystore.zip`）入库，**解压密码永不写入代码/README/提交信息**，由项目所有者掌握；CI 用 Secrets（SIGNING_ZIP_PASSWORD / SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD）自动解压+签名。
+1. **签名永久一致**：**v2.26 起为新软件、新仓库、新签名**（包名 `com.powerdebug.record`，与老项目 power-cabinet-debug-log/≤v2.25 用户正式分家；老包用户需卸载重装，签名链在 v2.26 定点重置）。本线所有历史/未来版本靠**同一 keystore**（alias=powerdebug）签名保证覆盖安装。发布必须验签（SHA-256 指纹 `71651EC50784C17E17758EE234373C19095D4BD899ED931174DD2DFD352178F8` 恒定）。禁止替换/删除 keystore、禁止改 alias 或密码。实名密钥材料（加密压缩包 `app/signing/powerdebug.keystore.zip`）入库，**解压密码永不写入代码/README/提交信息**，由项目所有者掌握；CI 用 Secrets（SIGNING_ZIP_PASSWORD / SIGNING_STORE_PASSWORD / SIGNING_KEY_PASSWORD）自动解压+签名。
 2. **绝不 fallbackToDestructiveMigration**：Room 迁移链必须完整、纯 SQL、可重复，任何版本升级不得丢库。
 3. **日志"测试人员"绝不回落登录账号**：日志与测试结果的人员归属取"当前调试员"；删除/改名调试员不影响历史日志。
 4. **故障已解决不自动过关，必须人工复测**：测试项关联故障被标"已解决"后，该项保持"未通过/待测"，只有测试员点"通过"才转绿（复测✓自动把仍待解决的关联故障标为已解决）。
@@ -356,4 +356,4 @@
 - [ ] 项目/柜子/类型的导出、全量导出、JSON 备份恢复
 - [ ] 调试员归属绝不回落登录账号
 - [ ] 文案全走 strings.xml；中文注释
-- [ ] 签名一致可覆盖安装；CI clean + 回归测试全绿
+- [ ] 签名一致可覆盖安装（新线 v2.26 起，SHA-256 指纹 `71651EC50784C17E17758EE234373C19095D4BD899ED931174DD2DFD352178F8`）；CI clean + 回归测试全绿

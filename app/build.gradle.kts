@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.fieldlog.powerdebug"
+    namespace = "com.powerdebug.record"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.fieldlog.powerdebug"
+        applicationId = "com.powerdebug.record"
         minSdk = 28
         targetSdk = 34
         versionCode = 29
