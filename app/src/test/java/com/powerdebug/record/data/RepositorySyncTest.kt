@@ -91,8 +91,9 @@ class RepositorySyncTest {
             "deviceCode" to "", "location" to "", "installer" to "", "shortName" to "",
             "sortOrder" to 0, "rowGroup" to 0, "createdAt" to updatedAt, "updatedAt" to updatedAt)
 
-    private fun log(id: String, instanceId: String, updatedAt: Long) =
+    private fun log(id: String, instanceId: String, updatedAt: Long, logType: Int = DebugLog.LOG_TYPE_PASS) =
         row("id" to id, "instanceId" to instanceId, "circuit" to "", "testContent" to "L1送电",
+            "logType" to logType,
             "tester" to "", "remark" to "", "createdBy" to "u", "updatedBy" to "u",
             "createdAt" to updatedAt, "updatedAt" to updatedAt)
 
@@ -261,5 +262,62 @@ class RepositorySyncTest {
         }
         // 本机库依然完好
         assertEquals(1, db.debugLogDao().allOnce().size)
+    }
+
+    // ---------- logType 快照往返（schemaVersion=11） ----------
+
+    @Test
+    fun logType_survives_snapshot_roundtrip_and_merge() = runTest {
+        val s = snapshot(
+            projects = listOf(project("p1", t0)),
+            types = listOf(type("t1", t0)),
+            instances = listOf(instance("i1", "p1", "t1", t0)),
+            logs = listOf(
+                log("l-pass", "i1", t0, DebugLog.LOG_TYPE_PASS),
+                log("l-fault", "i1", t0, DebugLog.LOG_TYPE_FAULT),
+                log("l-reso", "i1", t0, DebugLog.LOG_TYPE_RESOLUTION)
+            )
+        )
+        val r = repo.mergeJson(s)
+        assertEquals(3, r.newLogs)
+        val merged = db.debugLogDao().allOnce().associateBy { it.id }
+        assertEquals(DebugLog.LOG_TYPE_PASS, merged["l-pass"]?.logType)
+        assertEquals(DebugLog.LOG_TYPE_FAULT, merged["l-fault"]?.logType)
+        assertEquals(DebugLog.LOG_TYPE_RESOLUTION, merged["l-reso"]?.logType)
+
+        // global + 项目快照导出 → 全新库合并后类型仍保留
+        val global = repo.globalSnapshot()
+        val project = repo.projectSnapshot("p1")
+        val fresh = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(), AppDatabase::class.java
+        ).allowMainThreadQueries().build()
+        try {
+            val freshRepo = Repository(fresh)
+            freshRepo.mergeJson(global)
+            freshRepo.mergeJson(project)
+            val freshLogs = fresh.debugLogDao().allOnce().associateBy { it.id }
+            assertEquals(DebugLog.LOG_TYPE_FAULT, freshLogs["l-fault"]?.logType)
+            assertEquals(DebugLog.LOG_TYPE_RESOLUTION, freshLogs["l-reso"]?.logType)
+        } finally {
+            fresh.close()
+        }
+    }
+
+    @Test
+    fun logType_missing_in_old_snapshot_defaults_to_pass() = runTest {
+        // 旧格式快照无 logType 键（schemaVersion≤10）→ 按 0(通过) 解析，兼容读取
+        val s = snapshot(
+            projects = listOf(project("p1", t0)),
+            types = listOf(type("t1", t0)),
+            instances = listOf(instance("i1", "p1", "t1", t0)),
+            logs = listOf(row(
+                "id" to "l1", "instanceId" to "i1", "circuit" to "",
+                "testContent" to "L1送电", "tester" to "", "remark" to "",
+                "createdBy" to "u", "updatedBy" to "u",
+                "createdAt" to t0, "updatedAt" to t0
+            ))
+        )
+        repo.mergeJson(s)
+        assertEquals(DebugLog.LOG_TYPE_PASS, db.debugLogDao().allOnce().single().logType)
     }
 }

@@ -947,7 +947,7 @@ class Repository(private val db: AppDatabase) {
 
     companion object {
         const val BACKUP_APP_TAG = "power-debug-log"
-        const val BACKUP_SCHEMA = 10
+        const val BACKUP_SCHEMA = 11
         /** 时间戳冲突窗口（7.7）：仅当"同一条目双方都有"且时间差超过该值时才视为冲突、交由用户裁决 */
         const val CONFLICT_WINDOW_MS = 5L * 60L * 1000L
     }
@@ -981,6 +981,8 @@ class Repository(private val db: AppDatabase) {
      * schemaVersion 9：CabinetInstance 新增 rowGroup（行分组编号，0=未分组）。
      * schemaVersion 10：新增 deletedProjects（项目级删除墓碑）；顶层增加 deviceTimeZoneOffset
      *                 （时区偏移毫秒，同步冲突裁决用）；readyKind/kind 字段支持 global/项目双文件增量结构。
+     * schemaVersion 11：DebugLog 新增 logType 字段（0通过/1故障/2消除标注随快照同步，多端合并不再回退为"通过"）。
+     *                  旧备份缺该字段时按 0（通过）解析，兼容读取。
      */
     suspend fun backupJson(): String {
         val jo = JSONObject()
@@ -1033,7 +1035,8 @@ class Repository(private val db: AppDatabase) {
 
     private fun logJson(l: DebugLog) = JSONObject()
         .put("id", l.id).put("instanceId", l.instanceId)
-        .put("circuit", l.circuit).put("testContent", l.testContent)
+        .put("circuit", l.circuit).put("logType", l.logType)
+        .put("testContent", l.testContent)
         .put("tester", l.tester).put("remark", l.remark)
         .put("createdBy", l.createdBy).put("updatedBy", l.updatedBy)
         .put("createdAt", l.createdAt).put("updatedAt", l.updatedAt)
@@ -1232,6 +1235,7 @@ class Repository(private val db: AppDatabase) {
                     pb.logs += DebugLog(
                         id = getString("id"), instanceId = getString("instanceId"),
                         circuit = optString("circuit"), testContent = getString("testContent"),
+                        logType = optInt("logType", DebugLog.LOG_TYPE_PASS),
                         tester = optString("tester"), remark = optString("remark"),
                         createdBy = optString("createdBy"), updatedBy = optString("updatedBy"),
                         createdAt = optLong("createdAt"), updatedAt = optLong("updatedAt")
@@ -1366,6 +1370,7 @@ class Repository(private val db: AppDatabase) {
                     id = idOf(mapL, old),
                     instanceId = idOf(mapI, getLong("instanceId")),
                     circuit = optString("circuit"), testContent = getString("testContent"),
+                    logType = optInt("logType", DebugLog.LOG_TYPE_PASS),
                     tester = optString("tester"), remark = optString("remark"),
                     createdBy = "", updatedBy = "",
                     createdAt = t, updatedAt = optLong("updatedAt", t)
@@ -1454,6 +1459,7 @@ class Repository(private val db: AppDatabase) {
                     logs += DebugLog(
                         id = getString("id"), instanceId = getString("instanceId"),
                         circuit = optString("circuit"), testContent = getString("testContent"),
+                        logType = optInt("logType", DebugLog.LOG_TYPE_PASS),
                         tester = optString("tester"), remark = optString("remark"),
                         createdBy = optString("createdBy"), updatedBy = optString("updatedBy"),
                         createdAt = optLong("createdAt"), updatedAt = optLong("updatedAt")

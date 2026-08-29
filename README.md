@@ -33,6 +33,7 @@
   - **旧版数据迁移（v2.26）**：登录弹窗新增「旧版数据目录（迁移用）」——填旧版 v2.x 的 WebDAV 目录，首次同步自动把旧全量快照按项目拆解分发进新结构（已迁移文件名记本机，不删不改旧文件，旧版设备照常工作）；不填则仅用新结构
   - 达到规格第 7.0 三条硬需求：全局数据不丢、按项目增量、独立文件夹并可读旧数据
   - 数据工具页「立即同步」遇时钟歧义弹窗裁决；同步日志照常记录阶段清单与每次合并统计
+- **日志类型随快照同步（v2.27，关键）**：修复新版快照序列化漏写 `logType` 的先天缺陷——v2.26 生成的 global/项目快照都不含该键，多端同步合并后故障/消除日志会被当成「通过」显示（行数据没丢，同 v2.25 描述）。v2.27 起 `logJson` 补写 `logType`、三处读取（全量/合并/恢复）识别该键，**新同步不再重演分类回退**；备份 schemaVersion 10→11，旧快照缺键按 0 兼容解析
 - **柜子实例**：现场实际设备（如“1号直流馈线屏”），隶属某项目、绑定某类型；同型号柜子共用同一套候选池。字段：名称必填，设备编号 / 安装位置 / **安装人员** 选填
 - **调试日志**：
   - 项目→实例 两级定位后，自动加载该类型候选池，勾选后一键填充测试内容（可手改）
@@ -86,7 +87,7 @@
 ## 目录结构
 
 ```
-app/src/main/java/com/fieldlog/powerdebug/
+app/src/main/java/com/powerdebug/record/
 ├── App.kt                     # Application：数据库/仓库单例
 ├── data/
 │   ├── Repository.kt          # ★ 业务逻辑统一入口（候选池沉淀/级联删除/备份格式）
@@ -114,7 +115,7 @@ Project 1─N CabinetInstance N─1 CabinetType 1─N CandidateItem(候选池)
 
 - 删除均为级联删除且删除前有数量警告弹窗；显式删除入口同时写入 `deleted_items` 墓碑（DB v6）；**项目级删除另写独立 `deleted_projects` 墓碑表（DB v11）**，随全局区同步传播到全队
 - 候选池 `(typeId, content)` 唯一索引兜底去重
-- 同步文件分两种（DB v11 / 备份 schemaVersion=10）：`readyKind="global"` 全局区（类型/候选池/调试员/墓碑）与 `readyKind="project"` 单项目（项目+柜子/日志/故障/预选项），字段名=列名，PC/网页端可各自独立解析
+- 同步文件分两种（DB v11 / 备份 schemaVersion=11）：`readyKind="global"` 全局区（类型/候选池/调试员/墓碑）与 `readyKind="project"` 单项目（项目+柜子/日志/故障/预选项），字段名=列名，PC/网页端可各自独立解析
 
 ## 后期电脑端 / 网页端接入指南（预留设计）
 
@@ -122,20 +123,20 @@ Project 1─N CabinetInstance N─1 CabinetType 1─N CandidateItem(候选池)
    ```json
    {
      "app": "power-debug-log",
-     "schemaVersion": 10,
+     "schemaVersion": 11,
      "projects":      [{ "id","name","code","remark","createdAt","updatedAt" }],
      "cabinetTypes":  [{ "id","name","remark","createdAt","updatedAt" }],
      "candidateItems":[{ "id","typeId","content","createdAt","updatedAt" }],
      "instances":     [{ "id","projectId","typeId","name","deviceCode","location","installer","createdAt","updatedAt" }],
-     "logs":          [{ "id","instanceId","circuit","testContent","tester","remark","createdBy","updatedBy","createdAt","updatedAt" }],
+     "logs":          [{ "id","instanceId","circuit","testContent","logType","tester","remark","createdBy","updatedBy","createdAt","updatedAt" }],
      "faults":        [{ "id","logId","circuit","symptom","solution","occurredAt","resolvedAt","status","updatedAt" }],
      "plannedItems":  [{ "id","instanceId","content","enabled","doneAt","logId","result","faultId","createdAt","updatedAt" }],
      "debuggers":     [{ "id","name","createdAt","updatedAt" }],
      "deletedItems":  [{ "id","tbl","itemId","deletedAt" }],
-     "deletedProjects":[{ "id","projectId","deletedAt" }]   // v10：项目级删除墓碑
+     "deletedProjects":[{ "id","projectId","deletedAt" }]   // v11：项目级删除墓碑
     }
     ```
-    - `schemaVersion=10`；新结构文件带 `readyKind`（full/global/project）与 `deviceTimeZoneOffset`（时区偏移毫秒，同步冲突裁决用）
+    - `schemaVersion=11`；新结构文件带 `readyKind`（full/global/project）与 `deviceTimeZoneOffset`（时区偏移毫秒，同步冲突裁决用）
     - v2 起所有 `id` 为客户端生成的 UUID 字符串（多设备离线新增不撞主键）；`updatedAt` 为合并时钟。
     - 应用仍可导入 `schemaVersion: 1` 的旧备份（自动生成 UUID 并重映射引用）。
 2. **复用路径 A（Kotlin 多端）**：`data/db/Entities.kt` 与 `Repository.kt` 无 Android UI 依赖（仅依赖 Room 与 kotlinx-coroutines）。桌面端可用 JVM + Room（SQLite JDBC）、网页端可移植为 SQLDelight/Exposed，按相同语义实现 Repository。
@@ -150,6 +151,7 @@ Project 1─N CabinetInstance N─1 CabinetType 1─N CandidateItem(候选池)
    - v9：`instances` 增加 `rowGroup`（行分组编号，0=未分组）
    - v10：顶层增加 `deviceTimeZoneOffset`（时区偏移毫秒，同步冲突裁决）；新增 `deletedProjects` 项目级删除墓碑；`readyKind` 区分 full/global/project 三种快照子集
    - v10/DB v11：项目/类型/柜子/日志/故障/预选项/调试员删除仍写 `deleted_items`，**项目删除改走独立 `deleted_projects` 表**（app 内建库 version 10→11，迁移链完整）
+   - v11：`logs` 增加 `logType`（0通过/1故障/2消除，随快照同步多端合并不再回退为「通过」）；旧备份缺该键按 0 解析，兼容读取
 
 ## 隐私声明
 

@@ -191,9 +191,9 @@
 - 每台手机上传自己的快照 **`backup_<账号>_<本机标识>.json`**（本机标识 = 该设备唯一随机 tag，v2.8 起，同账号多机不互覆；旧格式 `backup_<账号>.json` 仍被读取合并）。
 - 打开应用/手动按钮时：先上传自己快照 → 列出目录所有快照 → 逐个合并进本机（60 秒节流防抖）。
 
-### 7.2 快照格式（backupJson，schemaVersion=9）
-- JSON 顶层含：app 标识、schemaVersion=9、exportedAt、projects、cabinetTypes、candidateItems、instances、logs、faults、plannedItems、debuggers、**deletedItems（全量删除墓碑）**。
-- 字段名 = 数据库列名；快照上传前 **gzip 压缩**（中文压到 1/8~1/15）；读取按魔数 `1f 8b` 自动识别，明文旧格式照常合并。
+### 7.2 快照格式（backupJson，schemaVersion=11）
+- JSON 顶层含：app 标识、schemaVersion=11、exportedAt、**deviceTimeZoneOffset**（时区偏移毫秒，同步冲突裁决用）、**readyKind**（full/global/project 区分全量/全局区/单项目快照）、projects、cabinetTypes、candidateItems、instances、logs、faults、plannedItems、debuggers、**deletedItems（全量删除墓碑）**、deletedProjects（项目级墓碑）。
+- 字段名 = 数据库列名；`logs` 含 `logType`（v11 起，0通过/1故障/2消除，旧备份缺键按 0 解析）；快照上传前 **gzip 压缩**（中文压到 1/8~1/15）；读取按魔数 `1f 8b` 自动识别，明文旧格式照常合并。
 
 ### 7.3 合并规则（applyMerge）
 按表顺序（父表在前保证外键引用）：项目→类型→候选→柜子→日志→故障→预选→调试员。
@@ -241,12 +241,13 @@
 - 传播：与 7.8/7.5 同理，刷新时间戳后下次上传以"新者胜"把正确类型传播回全队。
 - 预览与确认：先 `reclassifyLogTypes(preview=true)` 统计（分别列出 故障/消除 改动数 + 受影响故障记录数），确认弹窗→执行；不申请 DB 版本变更。
 - 撤销：修复时把 (日志id→原logType) 写入本机 `FixLogStore`（SharedPreferences，非业务数据、不随备份/同步传播）；「撤销类型修复」按留存还原并刷新时钟，**仅对留存之后的修复生效**。
+- v2.27 起（快照 schemaVersion=11）`logs` 序列化补写 `logType` 且全量/增量快照三处读取识别该键——**新产生的同步不再重演分类回退**，手动修复工具保留用于清洗既有旧数据。
 
 ---
 
 ## 8. 备份 / 恢复 / 导出
 
-- JSON 备份 = 7.2 快照格式（schemaVersion=9，兼容读取 1..9）；恢复前强提示覆盖。
+- JSON 备份 = 7.2 快照格式（schemaVersion=11，兼容读取 1..11）；恢复前强提示覆盖。
 - 恢复/解析要能容忍缺字段（optString/optLong 兜底）、旧版本缺列。
 - Excel 导出格式见 4.9。
 
