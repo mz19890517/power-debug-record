@@ -44,6 +44,11 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: gradle -p "$GITHUB_WORKSPACE" clean assembleDebug --no-daemon --stacktrace
 
+      - name: Verify APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk 2>&1 | tee /tmp/apk-certs.txt
+          grep -qi "71651EC50784C17E17758EE234373C19095D4BD899ED931174DD2DFD352178F8" /tmp/apk-certs.txt
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
