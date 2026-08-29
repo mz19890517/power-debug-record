@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <!-- 行号按钮 -->
+    <TextView
+        android:id="@+id/tv_row_number"
+        android:layout_width="48dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:textColor="@color/primary"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <!-- 横向滚动包裹 -->
+    <HorizontalScrollView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp">
+
+        <LinearLayout
+            android:id="@+id/row_items_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:minHeight="36dp" />
+    </HorizontalScrollView>
+
+    <!-- 添加柜子到此行 -->
+    <ImageButton
+        android:id="@+id/btn_add_to_row"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_add"
+        android:contentDescription="@string/row_add_to"
+        android:scaleType="centerInside"
+        android:tint="@android:color/black" />
+</LinearLayout>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <!-- 日志清单 -->
+    <path android:fillColor="@android:color/white"
+        android:pathData="M4,5h2v2L4,7zM8,5h12v2L8,7zM4,11h2v2L4,13zM8,11h12v2L8,13zM4,17h2v2L4,19zM8,17h12v2L8,19z" />
+</vector>

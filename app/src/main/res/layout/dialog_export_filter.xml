@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="20dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 状态筛选 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_status_label"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+
+        <RadioGroup
+            android:id="@+id/rgStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <RadioButton
+                android:id="@+id/rbAll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/export_filter_all"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/rbStatusFault"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/export_filter_has_fault"
+                android:layout_marginStart="16dp" />
+
+            <RadioButton
+                android:id="@+id/rbStatusPass"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/export_filter_pass_only"
+                android:layout_marginStart="16dp" />
+        </RadioGroup>
+
+        <!-- 测试人员筛选 -->
+        <TextView
+            android:id="@+id/tvTestersLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_testers_label"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp" />
+
+        <LinearLayout
+            android:id="@+id/llTesters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp" />
+
+        <!-- 柜子类型筛选 -->
+        <TextView
+            android:id="@+id/tvTypesLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_types_label"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp" />
+
+        <LinearLayout
+            android:id="@+id/llTypes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp" />
+
+        <!-- 日期范围 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_date_label"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <EditText
+                android:id="@+id/etDateFrom"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/export_filter_date_from_hint"
+                android:inputType="date"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="  —  "
+                android:layout_gravity="center_vertical" />
+
+            <EditText
+                android:id="@+id/etDateTo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/export_filter_date_to_hint"
+                android:inputType="date"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 日志表列选择 -->
+        <TextView
+            android:id="@+id/tvLogColsLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_log_cols_label"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp" />
+
+        <LinearLayout
+            android:id="@+id/llLogCols"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp" />
+
+        <!-- 故障表列选择 -->
+        <TextView
+            android:id="@+id/tvFaultColsLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_fault_cols_label"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp" />
+
+        <LinearLayout
+            android:id="@+id/llFaultCols"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvColsHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_filter_cols_hint"
+            android:textSize="11sp"
+            android:textColor="#888888"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+</ScrollView>

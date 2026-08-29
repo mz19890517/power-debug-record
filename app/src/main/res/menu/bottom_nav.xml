@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_logs"
+        android:icon="@drawable/ic_logs"
+        android:title="@string/tab_logs" />
+    <item
+        android:id="@+id/nav_device"
+        android:icon="@drawable/ic_devices"
+        android:title="@string/tab_device" />
+    <item
+        android:id="@+id/nav_tools"
+        android:icon="@drawable/ic_tools"
+        android:title="@string/tab_tools" />
+</menu>

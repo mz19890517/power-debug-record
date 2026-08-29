@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">电源柜调试记录</string>
+
+    <!-- 底部导航 -->
+    <string name="tab_logs">调试日志</string>
+    <string name="tab_device">设备管理</string>
+    <string name="tab_tools">数据工具</string>
+
+    <!-- 通用 -->
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="add">添加</string>
+    <string name="confirm">确认</string>
+    <string name="name_required">名称不能为空</string>
+    <string name="whole_cabinet">整柜测试</string>
+
+    <!-- 日志列表 -->
+    <string name="filter_all_types">全部类型</string>
+    <string name="filter_all_projects">全部项目</string>
+    <string name="filter_all_instances">全部柜子</string>
+    <string name="filter_all_status">全部故障状态</string>
+    <string name="filter_pending">含待处理故障</string>
+    <string name="filter_resolved">故障已全解决</string>
+    <string name="hint_circuit_filter">按回路号筛选</string>
+    <string name="hint_text_search">全文搜索：内容/现象/解决方法/备注…</string>
+    <string name="empty_logs">暂无调试日志\n点击右下角 ＋ 新建</string>
+
+    <!-- 日志编辑 -->
+    <string name="log_new_title">新建调试日志</string>
+    <string name="log_edit_title">编辑调试日志</string>
+    <string name="section_locate">所属定位</string>
+    <string name="label_project">项目</string>
+    <string name="label_instance">柜子实例</string>
+    <string name="label_circuit">回路号</string>
+    <string name="hint_circuit_input">留空 = 整柜测试；可输入后从历史联想选择</string>
+    <string name="section_pool">预选测试项（勾选后一键填充）</string>
+    <string name="btn_select_all">全选</string>
+    <string name="btn_clear_sel">清空</string>
+    <string name="btn_fill">填充到测试内容</string>
+    <string name="label_test_content">测试内容（可手动修改）</string>
+    <string name="label_tester">测试人员</string>
+    <string name="label_remark">备注</string>
+    <string name="section_faults">故障记录</string>
+    <string name="btn_add_fault">＋ 添加故障</string>
+    <string name="empty_pool">该柜子类型暂无候选测试项\n可在「设备管理→柜子类型」中维护</string>
+    <string name="err_pick_instance">请选择柜子实例</string>
+    <string name="err_content_empty">测试内容不能为空</string>
+    <string name="saved_ok">已保存</string>
+
+    <!-- 故障弹窗 -->
+    <string name="fault_title_edit">编辑故障</string>
+    <string name="fault_title_add">添加故障</string>
+    <string name="fault_circuit">故障回路</string>
+    <string name="fault_symptom">问题现象（必填）</string>
+    <string name="fault_solution">解决方法</string>
+    <string name="fault_occur_time">发生时间</string>
+    <string name="fault_resolve_time">解决完成时间</string>
+    <string name="fault_status_pending">待处理</string>
+    <string name="fault_status_resolved">已解决</string>
+    <string name="err_symptom_empty">请填写问题现象</string>
+
+    <!-- 设备管理 -->
+    <string name="device_tab_projects">项目</string>
+    <string name="device_tab_types">柜子类型</string>
+    <string name="empty_projects">暂无项目\n点击右上角 ＋ 新建工程项目</string>
+    <string name="empty_types">暂无柜子类型模板\n点击右上角 ＋ 新建（如：直流馈线柜）</string>
+    <string name="new_project">新建项目</string>
+    <string name="edit_project">编辑项目</string>
+    <string name="project_name">项目名称（必填）</string>
+    <string name="project_code">工程编号（选填）</string>
+    <string name="project_remark">备注（选填）</string>
+    <string name="new_type">新建柜子类型</string>
+    <string name="edit_type">重命名类型</string>
+    <string name="type_name">类型名称（必填）\n如：直流馈线柜 / 充电屏</string>
+    <string name="type_remark_hint">说明（选填）</string>
+    <string name="cabinets_fmt">%1$d 台柜子 · %2$d 条日志</string>
+    <string name="type_stat_fmt">%1$d 个候选项 · %2$d 台实例在用</string>
+
+    <!-- 项目详情 -->
+    <string name="title_project_detail">项目详情</string>
+    <string name="section_instances">本项目柜子</string>
+    <string name="add_instance">添加柜子</string>
+    <string name="instance_name">实例名称（必填，如：1号直流馈线屏）</string>
+    <string name="instance_code">设备编号（选填）</string>
+    <string name="instance_location">安装位置（选填）</string>
+    <string name="instance_installer">安装人员（选填）</string>
+    <string name="pick_type">选择柜子类型</string>
+    <string name="menu_log_new_here">新建日志</string>
+    <string name="warn_del_project">删除项目「%1$s」将连带删除其下 %2$d 台柜子的全部调试日志与故障记录，且不可恢复。确定？</string>
+    <string name="warn_del_instance">删除柜子「%1$s」将连带删除其 %2$d 条调试日志，不可恢复。确定？</string>
+    <string name="empty_instances">该项目还没有柜子\n点击右上角 ＋ 添加</string>
+
+    <!-- 类型详情 -->
+    <string name="title_type_detail">柜子类型详情</string>
+    <string name="section_pool_manage">预选测试项候选池</string>
+    <string name="pool_input_hint">输入一条测试项后点添加</string>
+    <string name="batch_import">批量导入</string>
+    <string name="batch_import_hint">每行一条，自动跳过重复项：</string>
+    <string name="added_fmt">新增 %1$d 条，跳过重复 %2$d 条</string>
+    <string name="section_usage">使用该类型的柜子（跨项目只读）</string>
+    <string name="warn_del_type">删除类型「%1$s」将连带删除使用它的 %2$d 台柜子及其全部日志，不可恢复。确定？</string>
+    <string name="del_candidate">删除该候选测试项？</string>
+    <string name="empty_usage">尚无柜子使用该类型</string>
+    <string name="empty_pool_detail">候选池为空，在上方输入框添加第一条</string>
+
+    <!-- 数据工具 -->
+    <string name="tools_export">导出全部日志 Excel</string>
+    <string name="tools_export_desc">生成 .xlsx（A4纵向打印适配），含“调试日志”与“故障记录”两个工作表</string>
+    <string name="tools_backup">备份数据 (JSON)</string>
+    <string name="tools_backup_desc">导出全部数据为单个JSON文件，可用于换机或存档</string>
+    <string name="tools_restore">恢复数据 (JSON)</string>
+    <string name="tools_restore_desc">从备份JSON恢复，⚠ 将覆盖当前全部数据</string>
+    <string name="tools_rollback">从备份找回被删记录</string>
+    <string name="tools_rollback_desc">扫描备份中本机已缺失的记录并权威插回（自动清除陈旧删除标记）。用于丢失的故障/消除日志恢复，仅需一台手机执行，其余手机靠同步收敛。</string>
+    <string name="tools_fix_types">修复日志类型</string>
+    <string name="tools_fix_types_desc">把挂有故障记录却显示为「通过」的日志标为「故障」；把备注=已解决故障现象、同柜同测试内容的日志标为「消除」（消除与解决方法重新显示）。旧版本/旧快照合并会把类型冲成默认值，修复只改标注、不增删数据，刷新时间戳后同步回全队。</string>
+    <string name="tools_fix_types_undo">撤销类型修复</string>
+    <string name="stats_title">数据统计</string>
+    <string name="about_offline">数据仅存储于本机SQLite；仅在你主动使用WebDAV同步时才访问自己配置的服务器，不集成任何第三方SDK。\n备份文件为标准JSON（schemaVersion 2），可供后期电脑端/网页端直接读取。</string>
+    <string name="export_ok">导出成功：%1$s</string>
+    <string name="backup_ok">备份成功</string>
+    <string name="restore_confirm_title">确认恢复</string>
+    <string name="restore_confirm_msg">将清空当前全部数据，并导入备份中的：\n项目 %1$d · 类型 %2$d · 柜子 %3$d · 日志 %4$d · 故障 %5$d\n\n此操作不可撤销，确定继续吗？</string>
+    <string name="restore_ok">恢复成功</string>
+    <string name="restore_bad_file">文件无效或已损坏，未做任何修改</string>
+    <string name="rollback_confirm_title">确认找回被删记录</string>
+    <string name="rollback_confirm_msg">备份中存在本机已缺失的记录，将找回并刷新时间戳（旧的删除标记会被一并清除，下次同步传播回全队）：\n\n日志 %1$d 条 · 故障 %2$d 条 · 柜子 %3$d 台 · 待测项 %4$d 条\n项目 %5$d · 类型 %6$d · 候选项 %7$d · 调试员 %8$d\n\n仅本机执行即可，其余手机靠同步自动收敛。确定继续？</string>
+    <string name="rollback_none_title">备份中无缺失记录</string>
+    <string name="rollback_none_msg">所选备份里没有本机已缺失的记录，因此没有可找回的内容。请对比下面备份与本机的日志构成，判断该备份是否为丢失之前的产物：\n\n【备份】日志共 %1$d 条（通过 %2$d · 故障 %3$d · 消除 %4$d），故障记录 %5$d 条\n\n【本机】日志共 %6$d 条（故障 %7$d · 消除 %8$d），故障记录 %9$d 条\n\n若备份中的故障/消除日志为 0，说明这份备份生成于丢失之后，请改选更早的备份（如坚果云文件历史）重试。</string>
+    <string name="rollback_ok">找回成功：%1$d 条记录已恢复（下次同步将传播回全队）</string>
+    <string name="fix_types_none">无需修复：没有挂着故障记录、或因备注匹配待恢复的消除日志</string>
+    <string name="fix_types_confirm_title">确认修复日志类型</string>
+    <string name="fix_types_confirm_msg">将把 %1$d 条日志改为「故障」（挂载 %2$d 条故障记录），%3$d 条日志改为「消除」（恢复对应故障的解决方法显示），并刷新时间戳以便下次同步把正确类型传播回全队。\n\n只改类型标注，不增删任何数据；修复记录保存在本机，随时可用「撤销类型修复」还原。确定继续？</string>
+    <string name="fix_types_ok">已修复：%1$d 条标为「故障」、%2$d 条标为「消除」（下次同步传播回全队）</string>
+    <string name="fix_types_undo_none">没有可撤销的类型修复记录</string>
+    <string name="fix_types_undo_title">撤销类型修复</string>
+    <string name="fix_types_undo_msg">将把此前修复工具改过的 %1$d 条日志还原为原始类型，并刷新时间戳同步回全队。确定？</string>
+    <string name="fix_types_undo_ok">已还原 %1$d 条日志的类型</string>
+    <string name="op_failed">操作失败：%1$s</string>
+
+    <!-- 账号与WebDAV同步 -->
+    <string name="sync_section_title">测试账号 · WebDAV同步</string>
+    <string name="sync_login">登录</string>
+    <string name="sync_switch">切换身份</string>
+    <string name="sync_logout">退出登录</string>
+    <string name="sync_auto_upload">自动同步（保存后推送；打开应用时拉取合并他人记录）</string>
+    <string name="sync_now">立即双向同步</string>
+    <string name="sync_log_view">查看同步日志</string>
+    <string name="sync_log_title">诊断日志（复制发开发者排查用）</string>
+    <string name="sync_log_empty">暂无同步记录。点一次「立即双向同步」后再来看。</string>
+    <string name="sync_log_copied">日志已复制，可粘贴发给开发者</string>
+    <string name="sync_log_clear">清空</string>
+    <string name="sync_log_cleared">已清空</string>
+    <string name="copy">复制</string>
+    <string name="suggest_caption">候选池相似项（点选回填，避免重复添加）：</string>
+    <string name="suggest_usage_fmt">使用%1$d次</string>
+    <string name="suggest_in_list">已在本柜清单</string>
+    <string name="sync_desc">团队互通（v2.26 增量同步）：所有测试员在云端新文件夹内共用一套「全局区 + 每项目一文件夹」结构。全局区存放柜子类型、候选池、调试员名单与删除墓碑；每个项目单独一个文件夹，按项目只同步有改动的数据（本地以项目版本时钟检测改动，不依赖文件时间）。同步时先推本机全局快照再拉取合并所有设备的全局与项目快照：新增并入，同ID冲突保留修改时间较新者，删除以墓碑传播（新者胜）。旧版快照可在登录弹窗填「旧版数据目录」自动迁移一次。\n密码栏输入超级口令可离线直接注册测试员。</string>
+    <string name="login_test">测试连接</string>
+    <string name="login_server">服务器地址 (WebDAV 目录URL)</string>
+    <string name="login_server_hint">如 https://dav.jianguoyun.com/dav/ 或 http://192.168.1.10:5005/dav/调试记录/</string>
+    <string name="login_username">账号</string>
+    <string name="login_password">密码</string>
+    <string name="login_hint">验证方式即WebDAV连通性测试。未配置服务器时可用超级口令代替密码，仅注册本地测试员身份。</string>
+    <string name="login_legacy">旧版数据目录（迁移用，可留空）</string>
+    <string name="login_legacy_hint">旧版 v2.x 的 WebDAV 目录URL；首次同步时自动把旧快照搬进新结构</string>
+    <string name="sync_verifying">正在连接服务器验证…</string>
+    <string name="sync_login_ok">已登录：%1$s</string>
+    <string name="sync_login_super">已用超级口令注册测试员：%1$s</string>
+    <string name="sync_logged_out">已退出登录</string>
+    <string name="sync_upload_ok">上传成功：%1$s</string>
+    <string name="sync_merge_confirm_title">确认合并云端数据</string>
+    <string name="sync_merge_confirm_msg">项目 新增%1$d/更新%2$d\n类型 新增%3$d/更新%4$d\n柜子 新增%5$d/更新%6$d\n日志 新增%7$d/更新%8$d\n故障 新增%9$d/更新%10$d\n\n冲突时保留修改时间较新的一方，不会删除本机数据。确定合并吗？</string>
+    <string name="sync_conflict_title">时间戳冲突</string>
+    <string name="sync_conflict_msg">云端与本机存在同一分钟内都有更新的记录，无法自动判定谁较新。请选择本次同步的裁决方式（仅对存在歧义的文件生效，之后不再询问）。</string>
+    <string name="sync_conflict_local">保留本地</string>
+    <string name="sync_conflict_cloud">覆盖云端</string>
+    <string name="sync_merge_done">合并完成</string>
+    <string name="not_logged_in">未登录</string>
+
+    <!-- 预选待测 / 开始测试 -->
+    <string name="menu_start_test">开始测试</string>
+    <string name="menu_manage_planned">预选待测</string>
+    <string name="title_planned_manage">预选待测</string>
+    <string name="title_start_test">开始测试</string>
+    <string name="planned_seeded_hint">已按类型模板生成该柜子的预选待测清单</string>
+    <string name="planned_input_hint">输入自定义测试项（如：L1照明回路送电）</string>
+    <string name="sync_from_pool">从候选池补充</string>
+    <string name="planned_sync_done">从候选池补充 %1$d 项</string>
+    <string name="planned_stat_fmt">共%1$d项 · 待测%2$d · 未通过%3$d · 已通过%4$d · 已停用%5$d\n勾选框=启用/停用；点已测项可撤销结果重新来过</string>
+    <string name="planned_pending">□ 待测</string>
+    <string name="planned_disabled">已停用</string>
+    <string name="planned_pass_fmt">✓ 已通过 %1$s</string>
+    <string name="planned_fail_fmt">✗ 未通过 %1$s · 原因：%2$s</string>
+    <string name="planned_reason_in_log">见日志故障记录</string>
+    <string name="planned_undo_title">撤销完成（恢复为待测）？</string>
+    <string name="empty_planned">暂无预选项目。可手动添加，或点右上按钮从候选池补充。</string>
+    <string name="start_test_hint">柜子：%1$s（编号 %2$s）\n勾选本次实际完成的测试项，完成后一键生成日志。</string>
+    <string name="empty_pending_tests">没有待测项目。\n请先在长按菜单「预选待测」里添加或启用项目。</string>
+    <string name="generate_log">生成日志</string>
+    <string name="generate_confirm_fmt">将把已勾选的 %1$d 项合并为一条调试日志（整柜）。请确认测试人员：</string>
+    <string name="log_generated">日志已生成 ✓</string>
+    <string name="ask_fault_now">是否立即登记本次发现的问题？\n（也可稍后在这条日志里补录）</string>
+    <string name="yes_register_now">现在登记</string>
+    <string name="later">稍后</string>
+    <string name="tester_name">测试人员</string>
+    <string name="del_log_retest">删除并重测（恢复待测）</string>
+    <string name="del_log_purge">删除并连项删除</string>
+    <string name="btn_pass">通过</string>
+    <string name="btn_fail">问题</string>
+    <string name="fail_symptom_hint">故障现象（必填，如：合闸后L1无输出）</string>
+    <string name="fail_symptom_required">该项记为"未通过"，需记录故障现象；整改后复测再点「通过」。</string>
+    <string name="fault_list_title">故障列表</string>
+    <string name="fault_list_empty">暂无故障记录</string>
+    <string name="fault_pass">通过</string>
+    <string name="fault_add_new">添加故障</string>
+    <string name="fault_multi_input_hint">输入多条故障（每行一条）\n如：\n合闸后L1无输出\n指示灯不亮</string>
+    <string name="fault_count_fmt">%1$d条故障</string>
+    <string name="fault_single_fmt">%1$s</string>
+    <string name="item_passed_click_hint">该项已通过，点击可驳回并添加故障</string>
+    <string name="reject_pass_title">驳回通过</string>
+    <string name="reject_pass_msg">驳回「%1$s」的通过状态，并记录故障原因：</string>
+    <string name="fault_pass_ok">已通过：%1$s</string>
+    <string name="fault_unpass_ok">已驳回：%1$s</string>
+    <string name="fault_add_ok">已添加 %1$d 条故障</string>
+    <string name="timeline_title">测试流程 · %1$s</string>
+    <string name="timeline_empty">暂无历史记录</string>
+    <string name="timeline_log_fmt">%1$s · 测试人员：%2$s</string>
+    <string name="timeline_fault_fmt">  · 故障：%1$s</string>
+    <string name="timeline_pass">  ✓ 通过</string>
+    <string name="timeline_fault_pending">待处理</string>
+    <string name="timeline_fault_resolved">已解决</string>
+    <string name="reject_menu_title">驳回测试</string>
+    <string name="progress_line_fmt">本柜测试进度：待测 %1$d · 未通过 %2$d · 已通过 %3$d</string>
+    <string name="progress_detail_title">本柜预选测试项明细</string>
+    <string name="log_marked_toast">已保存 ✓ 并自动标记 %1$d 项预选项目为"已通过"</string>
+    <string name="edited_marker"> ·已改</string>
+
+    <!-- 调试员名单（v2.5） -->
+    <string name="debugger_manage">调试员管理</string>
+    <string name="debugger_desc">现场调试人员名册，与登录账号无关。日志「测试人员」从名单中选取；添加/改名/删除需超级口令，名单随同步互通到全队。</string>
+    <string name="debugger_summary_empty">调试员：暂无（点下方按钮添加）</string>
+    <string name="debugger_summary">调试员 %1$d 人：%2$s</string>
+    <string name="debugger_gate_title">操作验证</string>
+    <string name="debugger_gate_msg">管理调试员名单需要输入超级口令</string>
+    <string name="debugger_gate_hint">超级口令</string>
+    <string name="debugger_gate_wrong">口令不正确</string>
+    <string name="debugger_manager_title">调试员名单（%1$d人）\n点姓名可改名/删除</string>
+    <string name="debugger_add">添加</string>
+    <string name="debugger_rename">改名</string>
+    <string name="debugger_delete">删除</string>
+    <string name="debugger_name_hint">调试员姓名（如：张三）</string>
+    <string name="debugger_name_empty">姓名不能为空</string>
+    <string name="debugger_exists">该姓名已在名单中</string>
+    <string name="debugger_added">已添加：%1$s</string>
+    <string name="debugger_renamed">已改名：%1$s</string>
+    <string name="debugger_deleted">已删除：%1$s（历史日志保留原姓名）</string>
+    <string name="debugger_delete_confirm">删除调试员「%1$s」？\n历史日志不受影响，仍显示原姓名。</string>
+    <string name="debugger_bind_local">绑定本机调试员</string>
+    <string name="debugger_bound_local">已绑定为本机调试员：%1$s</string>
+    <string name="debugger_current_label">本机调试员</string>
+    <string name="debugger_pick_first">请先绑定本机当前调试员（点顶部信息行切换）</string>
+    <string name="close">关闭</string>
+    <string name="tester_pick_title">选择调试员</string>
+    <string name="tester_pick_hint">点击选择调试员</string>
+    <string name="debugger_empty_hint">尚无调试员。\n请先在工具页「调试员管理」中添加（需超级口令）。</string>
+
+    <!-- v2.6：当前调试员 / 定向导出 / 复测自动销故障 -->
+    <string name="debugger_switch_title">切换当前调试员</string>
+    <string name="debugger_none_set">未绑定，点击选择</string>
+    <string name="generate_confirm_fmt2">将把已操作的 %1$d 项合并为一条调试日志（整柜）。</string>
+    <string name="generate_as_debugger">调试员：%1$s</string>
+    <string name="planned_passed">✓ 已通过</string>
+    <string name="planned_passed_at_fmt">✓ 已通过 %1$s</string>
+    <string name="menu_edit_instance">编辑柜子信息</string>
+    <string name="menu_export_instance">导出本柜日志</string>
+    <string name="menu_export_project">导出本项目日志</string>
+    <string name="planned_first_hint">该柜还没有测试项目，请先勾选预选清单</string>
+
+    <!-- v2.9：常用模板 / 候选手选器 / 跨柜拉取 / 删除同步 -->
+    <string name="menu_add_template">加入常用模板</string>
+    <string name="template_done_fmt">已把「%2$s」的待测项沉淀为类型常用模板：新增 %1$d 条候选（已有的自动跳过）</string>
+    <string name="template_none">没有可沉淀的待测项（各柜清单为空）</string>
+
+    <string name="pick_title">从候选池选择待测项</string>
+    <string name="pick_hint">按使用频次排序，常用的排最前 · 长按条目后滑动可连续多选</string>
+    <string name="pick_common">常用选取</string>
+    <string name="pick_confirm_fmt">加入所选（%1$d 项）</string>
+    <string name="pick_confirm_zero">加入所选</string>
+    <string name="pick_usage_fmt">已被使用 %1$d 次</string>
+    <string name="pick_in_list">已在当前清单中</string>
+    <string name="pick_common_none">暂无使用≥%1$d次的候选项，可先全选或手动勾选</string>
+
+    <string name="menu_pull_planned">从别的柜子拉取预选待测</string>
+    <string name="pull_title_fmt">从别的柜子拉取 · 覆盖「%1$s」</string>
+    <string name="pull_search_hint">搜索项目名 / 柜子名 / 设备编号</string>
+    <string name="pull_empty">没有匹配的柜子</string>
+    <string name="pull_no_source">暂无其他柜子可拉取</string>
+    <string name="pull_confirm_title">覆盖确认</string>
+    <string name="pull_confirm_msg">将用来源柜「%1$s」的 %2$d 项启用待测，整体覆盖本柜现有 %3$d 项。\n\n本柜旧清单会被删除并同步到团队其他手机。确定？</string>
+    <string name="pull_done_fmt">已拉取 %1$d 项 ✓（原清单已覆盖）</string>
+
+    <!-- 导出筛选（v2.14） -->
+    <string name="export_filter_title">导出筛选</string>
+    <string name="export_filter_status_label">日志状态</string>
+    <string name="export_filter_all">全部</string>
+    <string name="export_filter_has_fault">仅含故障</string>
+    <string name="export_filter_pass_only">仅通过</string>
+    <string name="export_filter_testers_label">测试人员</string>
+    <string name="export_filter_types_label">柜子类型</string>
+    <string name="export_filter_testers_all">全部人员</string>
+    <string name="export_filter_date_label">日期范围</string>
+    <string name="export_filter_date_from_hint">起始日期（可选）</string>
+    <string name="export_filter_date_to_hint">结束日期（可选）</string>
+    <string name="export_filter_log_cols_label">调试日志列</string>
+    <string name="export_filter_fault_cols_label">故障记录列</string>
+    <string name="export_filter_cols_hint">不勾选=全部列导出</string>
+    <string name="export_filter_no_testers">暂无调试员</string>
+
+    <!-- 网格视图 / 精简名（v2.15） -->
+    <string name="grid_pending_label">待测</string>
+    <string name="grid_faults_label">故障</string>
+    <string name="grid_toggle_desc">切换列表/网格视图</string>
+    <string name="short_name_title">设置精简名</string>
+    <string name="short_name_hint">精简名（网格显示用，不影响导出）</string>
+    <string name="short_name_saved">已保存精简名：%1$s</string>
+    <string name="short_name_cleared">已清除精简名</string>
+
+    <!-- v2.17：名称模式 / 排列方式 / 行编辑器 -->
+    <string name="action_name_mode_full">显示全名</string>
+    <string name="action_name_mode_short">显示精简名</string>
+    <string name="action_sort">排列方式</string>
+    <string name="sort_name_asc">柜名升序</string>
+    <string name="sort_name_desc">柜名降序</string>
+    <string name="sort_fault_desc">待处理故障降序</string>
+    <string name="sort_test_desc">待测数量降序</string>
+    <string name="grid_label_pending_short">待</string>
+    <string name="grid_label_faults_short">故</string>
+
+    <!-- 行编辑器对话框 -->
+    <string name="row_editor_title">排列方式</string>
+    <string name="row_editor_auto_sort">自动排序</string>
+    <string name="sort_custom_row">自定义行分配</string>
+    <string name="row_editor_hint">点击行号向该行添加柜子（每行最多4个，不足4个居中显示）</string>
+    <string name="row_number_fmt">%1$d</string>
+    <string name="row_add_to">添加柜子到此行</string>
+    <string name="row_remove_from">移除</string>
+    <string name="row_add_cabinet_fmt">添加到第%1$d行</string>
+    <string name="row_max_reached">每行最多4个柜子</string>
+    <string name="row_all_assigned">所有柜子已分配到此行</string>
+
+    <!-- 删除防呆（v2.16） -->
+    <string name="safeguard_section_title">安全设置</string>
+    <string name="delete_safeguard_label">删除防呆（开启后删除需输入当前时间确认）</string>
+    <string name="safeguard_title">删除验证</string>
+    <string name="safeguard_msg">请输入「%1$s」确认删除：\n即当前时间加删除类型</string>
+    <string name="safeguard_time_hint">如 %1$s</string>
+    <string name="safeguard_wrong">时间不正确，删除已取消</string>
+
+    <!-- v2.18：独立日志 + 故障列表改造 -->
+    <string name="check_count_fmt">已操作 %1$d / 共 %2$d 项</string>
+    <string name="generate_independent_fmt">将为 %1$d 项操作分别生成独立日志。</string>
+    <string name="unsaved_changes">未保存的操作</string>
+    <string name="unsaved_changes_msg">有未保存的操作，是否保存并生成日志？</string>
+    <string name="save_and_generate">保存并生成</string>
+    <string name="discard_changes">不保存</string>
+    <string name="log_type_pass">通过</string>
+    <string name="fault_resolved_label">已处理</string>
+    <string name="del_resolution_reject">删除消除日志并驳回</string>
+    <string name="del_fault_and_resolution">删除此故障生成日志和消除日志</string>
+    <string name="undo">撤回</string>
+    <string name="pass_with_faults_msg">该项还有 %1$d 条未消除的故障，通过时将全部标记为已处理并生成消除日志。是否继续？</string>
+    <string name="pass_resolve_all">全部消除并通过</string>
+
+    <!-- v2.19：解决方法（故障通过填写 + 时间线编辑显示） -->
+    <string name="solution_input_hint">解决方法（选填，如：更换保险丝）\n填写后该故障始终显示处理方法，可在消除记录中随时修改</string>
+    <string name="fault_pass_solution_title">故障通过 · %1$s</string>
+    <string name="timeline_solution_fmt"> · 方法：%1$s</string>
+    <string name="timeline_solution_edit_title">编辑解决方法 · %1$s</string>
+</resources>

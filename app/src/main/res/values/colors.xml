@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 浅色工业风：钢蓝主色 -->
+    <color name="primary">#1F5C99</color>
+    <color name="primary_dark">#17456F</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#D9E6F5</color>
+    <color name="on_primary_container">#0B3055</color>
+    <color name="secondary">#45607F</color>
+    <color name="bg">#F2F4F7</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#1B1F24</color>
+    <color name="text_secondary">#5A6570</color>
+    <color name="divider">#E1E5EA</color>
+    <color name="danger">#B3261E</color>
+    <color name="pending_bg">#FDEBEA</color>
+    <color name="pending_fg">#B3261E</color>
+    <color name="resolved_bg">#E6F4EA</color>
+    <color name="resolved_fg">#137333</color>
+</resources>

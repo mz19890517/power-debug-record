@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_toggle_view"
+        android:icon="@drawable/ic_grid_view"
+        android:title="@string/grid_toggle_desc"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_name_mode"
+        android:title="@string/action_name_mode_full"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_sort"
+        android:title="@string/row_editor_title"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_edit_project"
+        android:title="@string/edit_project"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_delete_project"
+        android:title="@string/delete"
+        app:showAsAction="never" />
+</menu>
