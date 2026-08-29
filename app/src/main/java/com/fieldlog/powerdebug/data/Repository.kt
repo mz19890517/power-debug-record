@@ -1274,19 +1274,20 @@ class Repository(private val db: AppDatabase) {
             // v6起新增：删除墓碑；旧版备份无此数组静默跳过。
             // 项目级墓碑（tbl='projects'）在 v11 起改走独立 deletedProjects 表，解析时等价并入
             root.optJSONArray("deletedItems")?.let { a ->
-                for (i in 0 until a.length()) with(a.getJSONObject(i)) {
-                    val tbl = optString("tbl")
-                    val itemId = optString("itemId")
+                for (i in 0 until a.length()) {
+                    val o = a.getJSONObject(i)
+                    val tbl = o.optString("tbl")
+                    val itemId = o.optString("itemId")
                     if (tbl.isEmpty() || itemId.isEmpty()) continue
                     if (tbl == DeletedItem.TBL_PROJECTS) {
                         pb.deletedProjects += DeletedProject(
-                            id = optString("id").ifBlank { newId() },
-                            projectId = itemId, deletedAt = optLong("deletedAt")
+                            id = o.optString("id").ifBlank { newId() },
+                            projectId = itemId, deletedAt = o.optLong("deletedAt")
                         )
                     } else {
                         pb.tombs += DeletedItem(
-                            id = optString("id").ifBlank { newId() },
-                            tbl = tbl, itemId = itemId, deletedAt = optLong("deletedAt")
+                            id = o.optString("id").ifBlank { newId() },
+                            tbl = tbl, itemId = itemId, deletedAt = o.optLong("deletedAt")
                         )
                     }
                 }
@@ -1492,19 +1493,20 @@ class Repository(private val db: AppDatabase) {
                 }
             }
             root.optJSONArray("deletedItems")?.let { a ->
-                for (i in 0 until a.length()) with(a.getJSONObject(i)) {
-                    val tbl = optString("tbl")
-                    val itemId = optString("itemId")
+                for (i in 0 until a.length()) {
+                    val o = a.getJSONObject(i)
+                    val tbl = o.optString("tbl")
+                    val itemId = o.optString("itemId")
                     if (tbl.isEmpty() || itemId.isEmpty()) continue
                     if (tbl == DeletedItem.TBL_PROJECTS) {
                         deletedProjects += DeletedProject(
-                            id = optString("id").ifBlank { newId() },
-                            projectId = itemId, deletedAt = optLong("deletedAt")
+                            id = o.optString("id").ifBlank { newId() },
+                            projectId = itemId, deletedAt = o.optLong("deletedAt")
                         )
                     } else {
                         tombs += DeletedItem(
-                            id = optString("id").ifBlank { newId() },
-                            tbl = tbl, itemId = itemId, deletedAt = optLong("deletedAt")
+                            id = o.optString("id").ifBlank { newId() },
+                            tbl = tbl, itemId = itemId, deletedAt = o.optLong("deletedAt")
                         )
                     }
                 }

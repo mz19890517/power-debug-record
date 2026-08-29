@@ -97,7 +97,7 @@ object WebDavSync {
                 .onFailure { SyncLog.append(ctx, "⚠ 建目录失败（已存在可忽略）：${it.message}") }
 
             // ---------- ① 全局区：先推本机（墓碑即刻扩散），再拉所有设备的全局快照 ----------
-            suspend fun pullGlobal(f: String): MergeResult? {
+            suspend fun pullGlobal(f: String): MergeResult {
                 val text = decodeSnapshot(cl.download("$DIR_GLOBAL/$f"))
                 val favor = if (App.repo.hasMergeConflict(text)) favorResolver() else ConflictFavor.CLOUD
                 return App.repo.mergeJson(text, favor)
