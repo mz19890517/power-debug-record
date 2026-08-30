@@ -371,7 +371,7 @@ class ProjectDetailActivity : AppCompatActivity() {
     }
 
     /** 编辑器对话框内当前所有排的柜子归属（id → 排号），未保存前即生效 */
-    private fun buildLiveRowMap(editorRoot: LinearLayout): Map<String, Int> {
+    private fun buildLiveRowMap(editorRoot: LinearLayout): MutableMap<String, Int> {
         val map = mutableMapOf<String, Int>()
         for (i in 0 until editorRoot.childCount) {
             val rowView = editorRoot.getChildAt(i) ?: continue
