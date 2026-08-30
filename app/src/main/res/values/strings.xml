@@ -350,7 +350,13 @@
     <string name="row_remove_from">移除</string>
     <string name="row_add_cabinet_fmt">添加到第%1$d行</string>
     <string name="row_max_reached">每行最多4个柜子</string>
-    <string name="row_all_assigned">所有柜子已分配到此行</string>
+    <string name="row_all_assigned">没有可添加的柜子（所有柜子都已分配）</string>
+    <!-- v2.28：行编辑器柜子选择器（搜索 + 排除已分配 + 连续多选） -->
+    <string name="row_picker_search_hint">搜索柜名/精简名</string>
+    <string name="row_picker_hint">点选「未分配」柜子加入本排，可连续选多个；已分配（含其他排）置灰不可重复选择</string>
+    <string name="row_picker_unassigned">未分配</string>
+    <string name="row_picker_in_row_fmt">已在第%1$d排</string>
+    <string name="row_picker_done">完成</string>
 
     <!-- 删除防呆（v2.16） -->
     <string name="safeguard_section_title">安全设置</string>

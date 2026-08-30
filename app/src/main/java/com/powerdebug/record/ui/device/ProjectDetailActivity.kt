@@ -19,6 +19,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -345,79 +346,116 @@ class ProjectDetailActivity : AppCompatActivity() {
         tvRowNum.text = getString(R.string.row_number_fmt, rowNum)
 
         for (item in items) {
-            val chip = layoutInflater.inflate(R.layout.dialog_row_editor_chip, rowItemsContainer, false)
-            val tvChipName = chip.findViewById<TextView>(R.id.tv_chip_name)
-            val btnRemove = chip.findViewById<View>(R.id.btn_chip_remove)
-
-            tvChipName.text = if (isShortNameMode) {
-                item.instance.shortName.ifBlank { item.instance.name }
-            } else {
-                item.instance.name
-            }
-
-            btnRemove.setOnClickListener {
-                rowItemsContainer.removeView(chip)
-            }
-
-            rowItemsContainer.addView(chip)
+            addChipTo(rowItemsContainer, displayName(item))
         }
 
         btnAddToRow.setOnClickListener {
-            showAddToRowDialog(rowNum, rowItemsContainer)
+            showAddToRowDialog(rowNum, rowItemsContainer, container)
         }
 
         container.addView(rowView)
     }
 
-    /** 点击行号时弹出选择柜子对话框 */
-    private fun showAddToRowDialog(rowNum: Int, targetContainer: LinearLayout) {
-        // 获取当前行已有的柜子ID
-        val existingIds = mutableSetOf<String>()
-        for (i in 0 until targetContainer.childCount) {
-            val chip = targetContainer.getChildAt(i)
-            val tvName = chip.findViewById<TextView>(R.id.tv_chip_name) ?: continue
-            // 通过名称反查ID（简单方法，假设名称唯一）
-            val match = latestRows.find { row ->
-                val displayName = if (isShortNameMode) {
-                    row.instance.shortName.ifBlank { row.instance.name }
-                } else {
-                    row.instance.name
-                }
-                displayName == tvName.text.toString()
-            }
-            match?.let { existingIds.add(it.instance.id) }
-        }
+    /** 名称模式下的显示名（精简名优先，空则全名） */
+    private fun displayName(row: InstanceStatusRow): String =
+        if (isShortNameMode) row.instance.shortName.ifBlank { row.instance.name } else row.instance.name
 
-        // 过滤出不在本行的柜子
-        val available = latestRows.filter { it.instance.id !in existingIds }
-        if (available.isEmpty()) {
+    /** 向某行的 chips 容器追加一枚柜子 chip */
+    private fun addChipTo(targetContainer: LinearLayout, name: String) {
+        val chip = layoutInflater.inflate(R.layout.dialog_row_editor_chip, targetContainer, false)
+        val tvChipName = chip.findViewById<TextView>(R.id.tv_chip_name)
+        val btnRemove = chip.findViewById<View>(R.id.btn_chip_remove)
+        tvChipName.text = name
+        btnRemove.setOnClickListener { targetContainer.removeView(chip) }
+        targetContainer.addView(chip)
+    }
+
+    /** 编辑器对话框内当前所有排的柜子归属（id → 排号），未保存前即生效 */
+    private fun buildLiveRowMap(editorRoot: LinearLayout): Map<String, Int> {
+        val map = mutableMapOf<String, Int>()
+        for (i in 0 until editorRoot.childCount) {
+            val rowView = editorRoot.getChildAt(i) ?: continue
+            val rowItemsContainer = rowView.findViewById<LinearLayout>(R.id.row_items_container) ?: continue
+            for (j in 0 until rowItemsContainer.childCount) {
+                val chip = rowItemsContainer.getChildAt(j)
+                val tvName = chip.findViewById<TextView>(R.id.tv_chip_name) ?: continue
+                val match = latestRows.find { displayName(it) == tvName.text.toString() }
+                match?.let { map[it.instance.id] = i + 1 }
+            }
+        }
+        return map
+    }
+
+    /**
+     * 选择加入本排柜子的弹窗：搜索定位 + 排除所有已分配柜子（含其他排，不再重复选择）
+     * + 连续多选（点一个加一个，不关弹窗）——柜子多的大项目也能快速排好一排。
+     */
+    private fun showAddToRowDialog(rowNum: Int, targetContainer: LinearLayout, editorRoot: LinearLayout) {
+        // 实时分布：编辑器内每枚 chip 现在位于哪一排（跨排已分配的不可再选）
+        val liveRows = buildLiveRowMap(editorRoot)
+
+        // 全部已分配则直接提示，不空开弹窗
+        if (latestRows.none { liveRows[it.instance.id] == null }) {
             Toast.makeText(this, R.string.row_all_assigned, Toast.LENGTH_SHORT).show()
             return
         }
 
-        val names = available.map { row ->
-            if (isShortNameMode) {
-                row.instance.shortName.ifBlank { row.instance.name }
-            } else {
-                row.instance.name
+        val dlgView = layoutInflater.inflate(R.layout.dialog_row_add_cabinet, null)
+        val etSearch = dlgView.findViewById<EditText>(R.id.et_row_search)
+        val listContainer = dlgView.findViewById<LinearLayout>(R.id.ll_row_picker_list)
+
+        fun displayRows(): List<InstanceStatusRow> {
+            val q = etSearch.text.toString().trim()
+            val filtered = if (q.isEmpty()) latestRows else latestRows.filter {
+                it.instance.name.contains(q, ignoreCase = true) ||
+                    (it.instance.shortName.isNotEmpty() && it.instance.shortName.contains(q, ignoreCase = true))
             }
-        }.toTypedArray()
+            // 未分配在前，其后按所在排号、再按柜名
+            return filtered.sortedWith(
+                compareBy<InstanceStatusRow> { if (liveRows[it.instance.id] == null) 0 else 1 }
+                    .thenBy { liveRows[it.instance.id] ?: Int.MAX_VALUE }
+                    .thenBy { it.instance.name }
+            )
+        }
+
+        fun renderList() {
+            listContainer.removeAllViews()
+            for (row in displayRows()) {
+                val item = layoutInflater.inflate(R.layout.item_row_add_cabinet, listContainer, false)
+                val tvName = item.findViewById<TextView>(R.id.tv_picker_name)
+                val tvStatus = item.findViewById<TextView>(R.id.tv_picker_status)
+                tvName.text = displayName(row)
+
+                val atRow = liveRows[row.instance.id]
+                if (atRow == null) {
+                    // 未分配：可点选加入本排，选中后立即变为"已在第N排"置灰
+                    tvStatus.text = getString(R.string.row_picker_unassigned)
+                    item.setOnClickListener {
+                        if (targetContainer.childCount >= MAX_PER_ROW) {
+                            Toast.makeText(this, R.string.row_max_reached, Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
+                        addChipTo(targetContainer, displayName(row))
+                        liveRows[row.instance.id] = rowNum
+                        renderList()
+                    }
+                } else {
+                    // 已分配（本排或其他排）：展示去处、禁止重复选择
+                    tvStatus.text = getString(R.string.row_picker_in_row_fmt, atRow)
+                    item.isEnabled = false
+                    item.alpha = 0.45f
+                }
+                listContainer.addView(item)
+            }
+        }
+
+        renderList()
+        etSearch.doAfterTextChanged { renderList() }
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.row_add_cabinet_fmt, rowNum))
-            .setItems(names) { _, which ->
-                val selected = available[which]
-                if (targetContainer.childCount >= MAX_PER_ROW) {
-                    Toast.makeText(this, R.string.row_max_reached, Toast.LENGTH_SHORT).show()
-                    return@setItems
-                }
-                val chip = layoutInflater.inflate(R.layout.dialog_row_editor_chip, targetContainer, false)
-                val tvChipName = chip.findViewById<TextView>(R.id.tv_chip_name)
-                val btnRemove = chip.findViewById<View>(R.id.btn_chip_remove)
-                tvChipName.text = names[which]
-                btnRemove.setOnClickListener { targetContainer.removeView(chip) }
-                targetContainer.addView(chip)
-            }
+            .setView(dlgView)
+            .setPositiveButton(R.string.row_picker_done, null)
             .setNegativeButton(R.string.cancel, null)
             .show()
     }
@@ -434,14 +472,7 @@ class ProjectDetailActivity : AppCompatActivity() {
             for (j in 0 until rowItemsContainer.childCount) {
                 val chip = rowItemsContainer.getChildAt(j)
                 val tvName = chip.findViewById<TextView>(R.id.tv_chip_name) ?: continue
-                val match = latestRows.find { row ->
-                    val displayName = if (isShortNameMode) {
-                        row.instance.shortName.ifBlank { row.instance.name }
-                    } else {
-                        row.instance.name
-                    }
-                    displayName == tvName.text.toString()
-                }
+                val match = latestRows.find { displayName(it) == tvName.text.toString() }
                 match?.let { ids.add(it.instance.id) }
             }
             if (ids.isNotEmpty()) {
