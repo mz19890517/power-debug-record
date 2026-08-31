@@ -20,7 +20,9 @@ class WebDavSyncFolderNameTest {
     fun sanitize_replaces_illegal_and_keeps_chinese() {
         // 路径/通配非法字符 → '_'，中文保留
         assertEquals("1号_馈线柜_测试", WebDavSync.sanitizeFolderName("1号/馈线柜:测试"))
-        assertEquals("A_B_C", WebDavSync.sanitizeFolderName("A\\B<C>|"))
+        assertEquals("A_B_C_D", WebDavSync.sanitizeFolderName("A\\B<C>D"))
+        assertEquals("E_F_G_H", WebDavSync.sanitizeFolderName("E:F?G|H"))
+        assertEquals("I_J_K", WebDavSync.sanitizeFolderName("I*J\"K"))
     }
 
     @Test
@@ -34,7 +36,9 @@ class WebDavSyncFolderNameTest {
         assertEquals("未命名", WebDavSync.sanitizeFolderName("  "))
         assertEquals("未命名", WebDavSync.sanitizeFolderName("."))
         assertEquals("未命名", WebDavSync.sanitizeFolderName(".."))
+        // 清洗后只剩 '_' 也没有可辨识内容 → 同样回退未命名
         assertEquals("未命名", WebDavSync.sanitizeFolderName("/?*"))
+        assertEquals("未命名", WebDavSync.sanitizeFolderName("?"))
     }
 
     @Test
