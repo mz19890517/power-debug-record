@@ -135,9 +135,7 @@ object WebDavSync {
             val clocks = App.repo.projectClocks()
             val lastSync = SyncStore.projectLastSync(ctx)
             val remotePids = runCatching {
-                cl.listChildren(DIR_PROJECTS).mapNotNull { n ->
-                    if (n.endsWith("/")) n.removeSuffix("/").removePrefix("project_").takeIf { it.isNotBlank() } else null
-                }.toSet()
+                cl.listChildren(DIR_PROJECTS).mapNotNull { n -> projectKeyOf(n) }.toSet()
             }.getOrElse { e ->
                 SyncLog.append(ctx, "② ⚠ 枚举项目目录失败 ${e.message}")
                 emptySet()
@@ -240,4 +238,18 @@ object WebDavSync {
         if (doneCount > 0) SyncStore.setLegacyMigrated(ctx, true)
         SyncLog.append(ctx, "旧版迁移完成：本次吸收${doneCount}份快照，共${done.size}份")
     }
+}
+
+/**
+ * 云端 projects/ 子项 → 项目文件夹键（=UUID）。
+ * 兼容两种 href 形式：带尾斜杠的集合项（如 "project_xxx/"）与不带尾斜杠的
+ * （如 "project_xxx"）都接受；过滤非 project_ 前缀、空名、深层路径。
+ * 原因：部分 WebDAV 服务器（实测坚果云）对集合 href 不总是补尾斜杠，
+ * 若枚举要求 endsWith("/") 会把目录名全部丢弃 → 云端项目恒为 0、"只能同步
+ * 柜子类型拉不到项目"。与 core/parseHrefChild 配套构成 v2.29 双保险。
+ */
+internal fun projectKeyOf(child: String): String? {
+    if (!child.startsWith("project_")) return null
+    val key = child.removeSuffix("/").removePrefix("project_")
+    return key.takeIf { it.isNotBlank() && '/' !in it }
 }
