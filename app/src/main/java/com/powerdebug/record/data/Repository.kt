@@ -1091,7 +1091,7 @@ class Repository(private val db: AppDatabase) {
     }
 
     /**
-     * 单项目快照（7.5 projects/project_<UUID>/backup_<账号>_project.json.gz）：
+     * 单项目快照（7.5 projects/project_<项目名>/backup_<账号>_project.json.gz，v2.29 文件夹以项目名为准）：
      * 项目行 + 该项目全部 柜子/日志/故障/预选项（删除墓碑统一走全局区传播，不入项目文件，
      * 避免为墓碑追溯所属项目而扩充 deleted_items 结构）。
      */

@@ -27,7 +27,8 @@
 
 - Room schema 当前 version=11（迁移链 1→2→3→…→11 必须保持完整，禁止 fallbackToDestructiveMigration）
 - JSON 备份 schemaVersion=11，字段名=数据库列名，是将来 PC/网页端的交换格式；v2.27 起 DebugLog 快照含 logType（0通过/1故障/2消除），旧备份缺键按 0 兼容解析；v2.10 起快照经 gzip 压缩上传，读取按魔数(1f 8b)自动兼容明文旧格式（util/WebDavSync.decodeSnapshot，公开可复用）；快照头含 deviceTimeZoneOffset；readyKind=full/global/project 区分全量/全局区/单项目三种快照
-- v2.26 起同步为「全局区 + 每项目一个文件夹」增量结构（规格第7章）：global/backup_<账号>_<设备>.json 存 类型/候选池/调试员/全部删除墓碑（含项目级），projects/project_<UUID>/backup_<账号>_<设备>.json 存该项目 柜子/日志/故障/预选项+项目行；本地修改检测用「项目版本时钟」(Repository.projectClocks = 该项目所有行最大 updatedAt) 与 SyncStore.projectLastSync 比较，不用文件 mtime；墓碑统一走全局区传播（不按项目拆分，无需为墓碑追溯项目归属）；冲突裁决 ConflictFavor(CLOUD/LOCAL)+CONFLICT_WINDOW_MS=5分钟，手动同步歧义时 ToolsFragment.askSyncConflict 弹窗
+- v2.26 起同步为「全局区 + 每项目一个文件夹」增量结构（规格第7章）：global/backup_<账号>_<设备>.json 存 类型/候选池/调试员/全部删除墓碑（含项目级），projects/project_<项目名>/backup_<账号>_<设备>.json 存该项目 柜子/日志/故障/预选项+项目行；本地修改检测用「项目版本时钟」(Repository.projectClocks = 该项目所有行最大 updatedAt) 与 SyncStore.projectLastSync 比较，不用文件 mtime；墓碑统一走全局区传播（不按项目拆分，无需为墓碑追溯项目归属）；冲突裁决 ConflictFavor(CLOUD/LOCAL)+CONFLICT_WINDOW_MS=5分钟，手动同步歧义时 ToolsFragment.askSyncConflict 弹窗
+- v2.29 项目文件夹名 = 清洗后的项目名（WebDavSync.sanitizeFolderName 替换 `[\\/:*?"<>|]`→`_`、压缩空白、空名/`.`/`..`→`未命名`、截断64；重名经 buildProjectKeys 自动补 `-<id前8位>`；本机按名匹配云端文件夹，匹配不到才 resolvePidInFolder 下载快照解析项目id，兼容旧 project_<UUID> 文件夹；项目改名后旧文件夹保留云端、上传条件含"云端无本机同名文件夹"自动收敛到新名字）
 - 旧版迁移（v2.26）：登录弹窗可填「旧版数据目录」(SyncStore.legacyUrl)，首次 syncAll 时 migrateLegacy 读取 v2.x 目录全量快照合并进本机库，再在本次会话内按项目时钟分发进新结构；已迁移文件名记 SyncStore(legacyMigratedFiles)，不删不改旧文件（legacyMigrated 置位后可清空复位重试）
 - 新增表/字段：DB version+1 写纯SQL迁移 + 备份版本+1 + parseBackup/restoreJson/merge 三处同步 + README 记录变更说明
 - 诊断日志：util/SyncLog.kt（同步过程）+ util/CrashLog.kt（全局未捕获异常黑匣子，App.onCreate 安装），工具页「查看同步日志」可查看/复制/清空——排查现场问题的标准手段

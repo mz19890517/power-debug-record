@@ -7,6 +7,7 @@ import com.powerdebug.record.data.ConflictFavor
 import com.powerdebug.record.data.MergeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
@@ -20,9 +21,11 @@ import java.util.zip.GZIPOutputStream
  * ├── global/
  * │   └── backup_<账号>_<本机标识>.json.gz     # 柜型+候选池+调试员+全部删除墓碑（含项目级）
  * └── projects/
- *     └── project_<UUID>/
+ *     └── project_<项目名>/                    # 项目文件夹 = "project_"+项目名(去文件系统非法字符；重名自动带id短缀)
  *         └── backup_<账号>_<本机标识>.json.gz # 该项目 柜子/日志/故障/预选项 + 项目行
  * ```
+ * 文件夹名以项目名为准、可读好找；旧版 project_<UUID> 文件夹仍会被解析合并（按快照内项目id
+ * 识别），项目改名后旧文件夹保留在云端、同步照常收敛到新名字文件夹。
  * 同步为三阶段（7.6）：
  * ① 全局：先推本机全局快照（墓碑优先扩散），再拉取合并所有设备的全局快照；
  * ② 枚举 projects/ 子文件夹，与本机项目求差集；
@@ -68,6 +71,50 @@ object WebDavSync {
 
     private fun kb(n: ByteArray) =
         java.lang.String.format(java.util.Locale.CHINA, "%.1fKB", n.size / 1024.0)
+
+    /** 项目名 → 云文件夹友好名：替换路径/URL 非法字符、压缩空白、去首尾空白、保留名回退、超长截断 */
+    internal fun sanitizeFolderName(name: String): String {
+        val cleaned = name
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        return when {
+            cleaned.isBlank() || cleaned == "." || cleaned == ".." -> "未命名"
+            else -> cleaned.take(64)
+        }
+    }
+
+    /** 本机项目 → 云端文件夹键（去掉 project_ 前缀后的部分）：重名项目自动补 id 短缀保证唯一 */
+    internal fun buildProjectKeys(projMap: Map<String, String>): Map<String, String> {
+        val sanitized = projMap.mapValues { (_, name) -> sanitizeFolderName(name) }
+        val dup = sanitized.values.groupingBy { it }.eachCount().filterValues { it > 1 }
+        return sanitized.mapValues { (pid, base) ->
+            if (base in dup) "$base-${pid.take(8)}" else base
+        }
+    }
+
+    /** 从快照文本解析首个项目 id（云端文件夹名解析回项目标识用；非快照内容返回 null） */
+    internal fun parseProjectIdFromSnapshot(text: String): String? = try {
+        val arr = JSONObject(text).optJSONArray("projects")
+        if (arr != null && arr.length() > 0) arr.getJSONObject(0).optString("id").takeIf { it.isNotBlank() } else null
+    } catch (e: Exception) {
+        null
+    }
+
+    /** 本机按名匹配不到时，读该云端文件夹内快照解析真实项目 id（兼容旧版 project_<UUID> 文件夹） */
+    internal suspend fun resolvePidInFolder(ctx: Context, cl: WebDavClient, dir: String): String? {
+        val files = runCatching {
+            cl.listChildren(dir).filter { it.startsWith("backup_") && it.endsWith(".json") }
+        }.getOrElse { emptyList() }
+        for (f in files) {
+            try {
+                decodeSnapshot(cl.download("$dir/$f")).let(::parseProjectIdFromSnapshot)?.let { return it }
+            } catch (e: Exception) {
+                SyncLog.append(ctx, "② ⚠ 解析项目文件夹 $dir/$f 失败：${e.message}")
+            }
+        }
+        return null
+    }
 
     /**
      * 新版三段式增量同步。@param favorResolver 冲突裁决回调（挂起、需在主线程弹窗）。
@@ -134,7 +181,13 @@ object WebDavSync {
             // ---------- ②/③ 项目级：云端子文件夹枚举 + 按项目增量上下传 ----------
             val clocks = App.repo.projectClocks()
             val lastSync = SyncStore.projectLastSync(ctx)
-            val remotePids = runCatching {
+
+            // 本机项目 → 云端文件夹键（"project_"前缀之外的部分，用项目名；重名自动补id短缀）
+            val keyByPid = buildProjectKeys(App.db.projectDao().allOnce().associate { it.id to it.name })
+            val myProjName = fileNameOf(ctx, me)
+
+            // 枚举云端 projects/ 子文件夹：本机名命中直接得 id，否则解析快照内容（兼容旧版 project_<UUID>）
+            val remoteFolders = runCatching {
                 cl.listChildren(DIR_PROJECTS).mapNotNull { n ->
                     if (n.endsWith("/")) n.removeSuffix("/").removePrefix("project_").takeIf { it.isNotBlank() } else null
                 }.toSet()
@@ -142,17 +195,30 @@ object WebDavSync {
                 SyncLog.append(ctx, "② ⚠ 枚举项目目录失败 ${e.message}")
                 emptySet()
             }
+            val remoteKeyToPid = mutableMapOf<String, String>()
+            val remotePids = mutableSetOf<String>()
+            for (key in remoteFolders) {
+                val dir = "$DIR_PROJECTS/project_$key"
+                val pid = keyByPid.entries.firstOrNull { it.value == key }?.key
+                    ?: resolvePidInFolder(ctx, cl, dir)
+                if (pid != null) {
+                    remoteKeyToPid[key] = pid
+                    remotePids.add(pid)
+                }
+            }
             val allPids = (clocks.keys + remotePids).toSet()
-            SyncLog.append(ctx, "② 云端项目${remotePids.size}个；本机项目${clocks.size}个；需处理${allPids.size}个")
+            val keysByPid = remoteKeyToPid.entries.groupBy({ it.value }, { it.key })
+            SyncLog.append(ctx, "② 云端项目文件夹${remoteFolders.size}个→解析到${remotePids.size}个；本机项目${clocks.size}个；需处理${allPids.size}个")
 
             for (pid in allPids.sorted()) {
-                val dir = "$DIR_PROJECTS/project_$pid"
-                val myProjName = fileNameOf(ctx, me)
+                val localKey = keyByPid[pid]
                 val localClock = clocks[pid] ?: 0L
                 val last = lastSync[pid] ?: 0L
+                val remoteKeys = keysByPid[pid] ?: emptyList()
 
-                if (pid in remotePids) {
-                    // 下载合并云端该项目所有设备文件（跳过自己本次可能已建的）
+                // 下载合并该 pid 在云端的所有文件夹（改名遗留的旧名字文件夹也在内）
+                for (key in remoteKeys) {
+                    val dir = "$DIR_PROJECTS/project_$key"
                     val files = runCatching {
                         cl.listChildren(dir).filter { it.startsWith("backup_") && it.endsWith(".json") }
                     }.getOrElse { emptyList() }
@@ -175,15 +241,16 @@ object WebDavSync {
                     }
                 }
 
-                // 上传条件：本机有该项目 &&（本机时钟晚于上次同步 || 云端还没有该项目）
-                if (pid in clocks && (localClock > last || pid !in remotePids)) {
+                // 上传条件：本机有该项目 &&（时钟晚于上次同步 || 云端尚未见该项目 || 云端文件夹名与本机不一致需建新名）
+                if (pid in clocks && (localClock > last || remoteKeys.isEmpty() || remoteKeys.none { it == localKey })) {
                     try {
+                        val dir = "$DIR_PROJECTS/project_${localKey ?: pid}"
                         cl.ensureDir(dir)
                         val gz = gzip(App.repo.projectSnapshot(pid).toByteArray(Charsets.UTF_8))
                         cl.upload("$dir/$myProjName", gz)
                         upProject++
                         SyncStore.setProjectLastSync(ctx, pid, System.currentTimeMillis())
-                        SyncLog.append(ctx, "③ 上传项目 $pid 压缩${kb(gz)}（时钟$localClock > 已同步$last）")
+                        SyncLog.append(ctx, "③ 上传项目 $pid($localKey) 压缩${kb(gz)}（时钟$localClock > 已同步$last）")
                     } catch (e: Exception) {
                         SyncLog.append(ctx, "③ ⚠ 上传项目失败 $pid：${e.message}")
                         errors.add("${pid.take(8)}上传(${e.message})")

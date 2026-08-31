@@ -229,23 +229,23 @@
 ├── global/
 │   └── backup_<账号>_global.json.gz      # tester_accounts, debuggers, cabinet_types, candidate_items
 ├── projects/
-│   └── project_<UUID>/
+│   └── project_<项目名>/
 │       └── backup_<账号>_project.json.gz # 该项目内的 instances, logs, faults, planned_items
 ├── legacy/                               # 旧版全量快照的"暂存/迁移区"（见 7.8 兼容迁移）
 │   └── backup_<账号>_<设备ID>.json.gz
 └── deleted_projects/                     # 或并入 global/，项目级删除墓碑
 ```
 - `global/` 一次拉取，全设备共用：调试员名单 / 账号 / 柜型与候选池都是**全局收敛**（不分项目）。
-- `projects/project_<UUID>/` 每个项目一个文件夹；文件夹名即项目 UUID（旧版 backup snapshot 里的 schemaVersion=9 字段名不变）。
+- `projects/project_<项目名>/` 每个项目一个文件夹；**v2.29 起文件夹名 = 清洗后的项目名**（`sanitizeFolderName` 替换 `[\\/:*?"<>|]`→`_`、压缩空白、空/`.`/`..`→`未命名`、截断64），重名项目经 `buildProjectKeys` 自动补 `-<id前8位>` 保证文件夹不互覆；旧版 `project_<UUID>` 文件夹不再按目录名反推项目，改为读快照内 projects[0].id（`resolvePidInFolder`）识别，改名后旧文件夹保留云端、上传条件含"云端无本机同名文件夹"自动收敛到新名字；快照字段仍沿用 schemaVersion=9 之后不变。
 - 快照文件仍按账号+设备标识命名，延续"多机不互覆"。
 
 ### 7.6 推荐：三阶段增量同步流程
 1. **阶段 A — 拉全局**：GET `global/backup_<账号>_global.json.gz`（不存在则跳过），按 7.3 规则合并（全局数据时间戳晚于本机时优先合并），并处理 deleted_projects 墓碑。
-2. **阶段 B — 枚举项目**：PROPFIND `projects/`，拿子文件夹名（=项目 UUID 列表），对比本机项目计算"云端有本机无 / 本机有云端无 / 双方都有"三类。
+2. **阶段 B — 枚举项目**：PROPFIND `projects/`，子文件夹名 = `project_`+项目名（清洗后），先按本机项目名匹配得 id，匹配不到才下载文件夹内快照解析项目 id（兼容旧 `project_<UUID>`）；对比本机项目计算"云端有本机无 / 本机有云端无 / 双方都有"三类。
 3. **阶段 C — 按项目差异上下传**：
    - **本地修改检测不依赖文件 mtime**（安卓厂商写入时间差异大、不可信）。改为：本机为每个项目维护 `projectLastSyncTime`（本地偏好，Map<ProjectId, Long>）；
    - 本地任一项目下发生增删改（柜子/日志/故障/预选项的创建、更新、删除墓碑）**都刷新该项目的版本时钟**（取该项目所有行最大的 updatedAt 即可，无需专用计数器）；
-   - 上传：`项目.max(updatedAt) > projectLastSyncTime[项目]` → 生成该项目 JSON（或按需增量子集），PUT 到 `projects/project_<UUID>/`；随后把 projectLastSyncTime 推进到本次上传的时刻。
+   - 上传：`项目.max(updatedAt) > projectLastSyncTime[项目]` **或云端无该项目文件夹 / 文件夹名与本机名不一致**（改名收敛）→ 生成该项目 JSON（或按需增量子集），PUT 到 `projects/project_<项目名>/`；随后把 projectLastSyncTime 推进到本次上传的时刻。
    - 下载：GET 云端该项目文件，按 7.3/7.4 合并（同项目内"新者胜"）；孤儿跳过；合并后 5.2/5.3 收尾。
    - **项目级删除**：删除项目 = 在该项目文件夹写删除墓碑（写入 `deleted_projects`/global 区），各端拉全局时按"新者胜"决定项目文件夹是否消亡。
 4. 同步全程写 SyncLog（包含阶段清单、每次合并统计），失败不崩溃、可重试。
@@ -258,7 +258,7 @@
 ### 7.8 推荐：与现版（v2.x）数据的兼容迁移
 - 新版**首次同步**时检查旧版目录 `backup_<账号>_<设备ID>.json(.gz)`（旧文件在旧版根目录；新版先让用户在旧目录授权读一次，仅迁移用）：
   1. 用 7.2 格式解码（魔数识别 gzip）；
-  2. 按 projectId 把全量拆解：projects/instances/logs/faults/planned_items → 各自 `projects/project_<UUID>/`；cabinet_types/candidate_items/debuggers/tester_accounts → `global/`；deletedItems → 分发到对应项目/全局墓碑；
+  2. 按 projectId 把全量拆解：projects/instances/logs/faults/planned_items → 各自 `projects/project_<项目名>/`；cabinet_types/candidate_items/debuggers/tester_accounts → `global/`；deletedItems → 分发到对应项目/全局墓碑；
   3. 逐项目 PUT 后，旧文件改名/删除或标记 `.migrated`，避免重复搬运；
   4. 迁移完成后新版只读写新目录（global/ + projects/）；旧版仍读写旧目录，互不干扰，直到全队升级完毕可废弃旧目录。
 - **注意**：现版数据中大量历史日志存在 `logType=0` 的归类失真（见 7.9 修复工具）——新版首次启动应内置同一套"日志类型修复"逻辑引导用户执行一次，或直接把 `logType` 的"可选模式"设为 UI 层兼容展示。
