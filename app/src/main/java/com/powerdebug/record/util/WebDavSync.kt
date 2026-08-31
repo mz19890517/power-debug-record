@@ -79,8 +79,7 @@ object WebDavSync {
             .replace(Regex("\\s+"), " ")
             .trim()
         return when {
-            cleaned.isBlank() || cleaned == "." || cleaned == ".." ||
-                cleaned.replace("_", "").isBlank() -> "未命名"
+            cleaned.isBlank() || cleaned == "." || cleaned == ".." -> "未命名"
             else -> cleaned.take(64)
         }
     }
