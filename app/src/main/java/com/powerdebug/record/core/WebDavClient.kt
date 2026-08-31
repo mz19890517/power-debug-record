@@ -161,7 +161,7 @@ class WebDavClient(
      * 旧版同步目录专用；新版增量同步用 listChildren 枚举子目录。
      */
     fun listBackups(): List<String> =
-        propfindNames("").filter { it.startsWith("backup_") && it.endsWith(".json") }
+        propfindNames("").filter { it.startsWith("backup_") && it.endsWith(".json") && !it.endsWith("/") }
 
     /** 通用目录枚举（Depth:1）：返回 dir 下所有直接子项名称（已URL解码，含 / 结尾的子目录名）。 */
     fun listChildren(dir: String): List<String> =
@@ -192,22 +192,14 @@ class WebDavClient(
                         XmlPullParser.END_TAG ->
                             if (p.name.equals("href", ignoreCase = true)) {
                                 capture = false
-                                val raw = sb.toString().trim()
-                                if (raw.isNotEmpty()) {
-                                    val name = try {
-                                        URLDecoder.decode(raw.substringAfterLast('/'), "UTF-8")
-                                    } catch (_: Exception) {
-                                        raw.substringAfterLast('/')
-                                    }
-                                    if (name.isNotEmpty()) out += name
-                                }
+                                parseHrefChild(sb.toString())?.let { out += it }
                             }
                     }
                     p.next()
                 }
                 val dirSelf = runCatching { URLDecoder.decode(dir.substringAfterLast('/'), "UTF-8") }
                     .getOrDefault(dir.substringAfterLast('/'))
-                return out.distinct().filter { it.isNotEmpty() && it != dirSelf }
+                return out.distinct().filter { it.isNotEmpty() && it.removeSuffix("/") != dirSelf }
             }
         } catch (e: DavException) {
             throw e
@@ -240,4 +232,25 @@ class WebDavClient(
             }
         }
     }
+}
+
+/**
+ * 单个PROPFIND <href> → 子项名：
+ * - 子目录（href 以 / 结尾）保留尾部斜杠（已URL解码），调用方据此区分目录/文件；
+ * - 普通文件返回纯名；路径本身（空或仅末节为"/"后无实义）返回 null。
+ * 旧实现用 substringAfterLast('/') 会把子目录名整个丢掉——WebDAV 集合 href 必带尾斜杠
+ * （RFC 4918），导致 projects/ 子文件夹枚举永远为空、"只能同步柜子类型拉不到项目"。
+ */
+internal fun parseHrefChild(raw: String): String? {
+    val t = raw.trim()
+    if (t.isEmpty()) return null
+    val isDir = t.endsWith("/")
+    val lastSeg = t.removeSuffix("/").substringAfterLast('/')
+    if (lastSeg.isEmpty()) return null
+    val name = try {
+        URLDecoder.decode(lastSeg, "UTF-8")
+    } catch (e: Exception) {
+        lastSeg
+    }
+    return if (name.isEmpty()) null else if (isDir) "$name/" else name
 }
