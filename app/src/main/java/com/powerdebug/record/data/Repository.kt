@@ -378,7 +378,7 @@ class Repository(private val db: AppDatabase) {
                 .forEach { candDao.insert(CandidateItem(id = newId(), typeId = inst.typeId, content = it)) }
         }
         // 日志增删/故障变化后刷新项目调试完成状态
-        refreshDebugEndDateForInstance(saved.instanceId)
+        refreshDebugEndDate(inst.projectId)
         return markedCount
     }
 
