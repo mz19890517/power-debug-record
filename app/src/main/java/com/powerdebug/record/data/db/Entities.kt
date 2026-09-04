@@ -20,6 +20,8 @@ data class Project(
     val name: String,
     val code: String = "",
     val remark: String = "",
+    val debugStartDate: Long = 0,
+    val debugEndDate: Long = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

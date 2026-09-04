@@ -25,8 +25,8 @@
 
 ## 数据库与备份格式
 
-- Room schema 当前 version=11（迁移链 1→2→3→…→11 必须保持完整，禁止 fallbackToDestructiveMigration）
-- JSON 备份 schemaVersion=11，字段名=数据库列名，是将来 PC/网页端的交换格式；v2.27 起 DebugLog 快照含 logType（0通过/1故障/2消除），旧备份缺键按 0 兼容解析；v2.10 起快照经 gzip 压缩上传，读取按魔数(1f 8b)自动兼容明文旧格式（util/WebDavSync.decodeSnapshot，公开可复用）；快照头含 deviceTimeZoneOffset；readyKind=full/global/project 区分全量/全局区/单项目三种快照
+- Room schema 当前 version=12（迁移链 1→2→3→…→12 必须保持完整，禁止 fallbackToDestructiveMigration）
+- JSON 备份 schemaVersion=12，字段名=数据库列名，是将来 PC/网页端的交换格式；v2.30 起 Project 快照含 debugStartDate/debugEndDate（调试起始/完成日期，旧备份缺键按 0 兼容解析）；v2.27 起 DebugLog 快照含 logType（0通过/1故障/2消除），旧备份缺键按 0 兼容解析；v2.10 起快照经 gzip 压缩上传，读取按魔数(1f 8b)自动兼容明文旧格式（util/WebDavSync.decodeSnapshot，公开可复用）；快照头含 deviceTimeZoneOffset；readyKind=full/global/project 区分全量/全局区/单项目三种快照
 - v2.26 起同步为「全局区 + 每项目一个文件夹」增量结构（规格第7章）：global/backup_<账号>_<设备>.json 存 类型/候选池/调试员/全部删除墓碑（含项目级），projects/project_<UUID>/backup_<账号>_<设备>.json 存该项目 柜子/日志/故障/预选项+项目行；本地修改检测用「项目版本时钟」(Repository.projectClocks = 该项目所有行最大 updatedAt) 与 SyncStore.projectLastSync 比较，不用文件 mtime；墓碑统一走全局区传播（不按项目拆分，无需为墓碑追溯项目归属）；冲突裁决 ConflictFavor(CLOUD/LOCAL)+CONFLICT_WINDOW_MS=5分钟，手动同步歧义时 ToolsFragment.askSyncConflict 弹窗
 - ⚠ v2.29 云端项目枚举修复（两段，勿再破坏）：WebDAV 集合 href 理论上按 RFC 4918 必带尾斜杠，但实测坚果云对部分集合不补尾斜杠——两处都必须宽容，改任何一处必回归对应测试：① core/WebDavClient.kt `parseHrefChild`：旧版 substringAfterLast('/') 把目录名吞空 → projects/ 恒空、任何设备拉不到项目（只同步柜子类型）；保留目录尾斜杠、文件纯名、URL解码（回归 WebDavClientHrefTest）。② util/WebDavSync.kt `projectKeyOf`：枚举不再依赖 namesWithSlash 假设，带/不带尾斜杠都归一出 project_<UUID>，过滤非 project_ 前缀/空名/深层路径（回归 WebDavSyncProjectKeyTest）。listBackups 跳过目录项
 - 旧版迁移（v2.26）：登录弹窗可填「旧版数据目录」(SyncStore.legacyUrl)，首次 syncAll 时 migrateLegacy 读取 v2.x 目录全量快照合并进本机库，再在本次会话内按项目时钟分发进新结构；已迁移文件名记 SyncStore(legacyMigratedFiles)，不删不改旧文件（legacyMigrated 置位后可清空复位重试）

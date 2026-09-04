@@ -193,6 +193,30 @@ class Repository(private val db: AppDatabase) {
         return cabinets
     }
 
+    /**
+     * 刷新项目「调试完成日期」（debugEndDate）：当且仅当该项目所有启用待测项均已通过
+     * （无未测/未通过）且无未消除故障（status=0）时，写入当前时间=调试完成；否则清零
+     * （撤回重测/新增故障 → 项目重新进行中）。
+     * 起始日期（debugStartDate）创建后不再由系统改动，仅用户手动编辑时更新。
+     * 仅在状态真正变化时落库，避免无意义地跳动 updatedAt 干扰同步时钟。
+     */
+    suspend fun refreshDebugEndDate(projectId: String) {
+        val p = projectDao.getByIdOnce(projectId) ?: return
+        val allDone = projectDao.enabledPlannedCount(projectId) > 0 &&
+            projectDao.notPassedPlannedCount(projectId) == 0 &&
+            projectDao.pendingFaultCount(projectId) == 0
+        val target = if (allDone) now() else 0L
+        if (p.debugEndDate != target) {
+            projectDao.update(p.copy(debugEndDate = target, updatedAt = now()))
+        }
+    }
+
+    /** 由柜子实例反查项目，并刷新该项目完成日期（状态跳变后的便捷入口） */
+    private suspend fun refreshDebugEndDateForInstance(instanceId: String) {
+        val inst = instanceDao.getByIdOnce(instanceId) ?: return
+        refreshDebugEndDate(inst.projectId)
+    }
+
     // ---------- 柜子类型与候选池 ----------
 
     suspend fun getType(id: String): CabinetType? = typeDao.getByIdOnce(id)
@@ -260,6 +284,8 @@ class Repository(private val db: AppDatabase) {
             // 新建柜子时把所属类型的候选池整份复制为该柜子的预选待测清单（快照式）
             if (isNew) seedPlannedFromPool(row.id, row.typeId, t)
         }
+        // 新增柜子带来新待测项 → 项目不再处于"全部完成"，完成日期清零
+        refreshDebugEndDate(row.projectId)
         return row.id
     }
 
@@ -351,6 +377,8 @@ class Repository(private val db: AppDatabase) {
                 .filter { it.isNotEmpty() && existing.add(it) }
                 .forEach { candDao.insert(CandidateItem(id = newId(), typeId = inst.typeId, content = it)) }
         }
+        // 日志增删/故障变化后刷新项目调试完成状态
+        refreshDebugEndDateForInstance(saved.instanceId)
         return markedCount
     }
 
@@ -430,6 +458,9 @@ class Repository(private val db: AppDatabase) {
         }
         // 兜底自愈：删除日志后，凡故障记录已全部消失但仍标记「未通过」的幽灵测试项一律转「通过」
         healGhostFailures()
+        // 删除日志/故障后状态变化 → 刷新项目调试完成状态
+        val inst1 = instanceDao.getByIdOnce(l.instanceId)
+        if (inst1 != null) refreshDebugEndDate(inst1.projectId)
     }
 
     /**
@@ -487,6 +518,7 @@ class Repository(private val db: AppDatabase) {
         if (allIds.isEmpty()) return
         val existing = faultDao.byIdsOnce(allIds).map { it.id }.toHashSet()
         val t = now()
+        val affectedProjects = linkedSetOf<String>()
         for (item in items) {
             val ids = item.faultId.split(",").filter { it.isNotEmpty() }
             if (ids.isEmpty()) continue
@@ -497,8 +529,11 @@ class Repository(private val db: AppDatabase) {
                     if (item.doneAt > 0) item.doneAt else t,
                     item.logId, ""
                 )
+                instanceDao.getByIdOnce(item.instanceId)?.let { affectedProjects += it.projectId }
             }
         }
+        // 幽灵故障被自愈转"通过"后刷新对应项目完成状态
+        for (pid in affectedProjects) refreshDebugEndDate(pid)
     }
 
     // ---------- 预选待测 ----------
@@ -745,6 +780,8 @@ class Repository(private val db: AppDatabase) {
                 }
             }
         }
+        // 测试完成后状态变化 → 刷新项目调试完成状态（可能首次达成全部完成）
+        refreshDebugEndDateForInstance(inst.id)
     }
 
     suspend fun faultsOf(logId: String) = faultDao.forLogOnce(logId)
@@ -804,6 +841,8 @@ class Repository(private val db: AppDatabase) {
             }
             plannedDao.setResult(listOf(p.id), PlannedItem.RESULT_UNTESTED, 0L, "", "")
         }
+        // 撤回已通过项 → 项目不再全部完成，完成日期清零
+        refreshDebugEndDateForInstance(p.instanceId)
     }
 
     /**
@@ -947,7 +986,7 @@ class Repository(private val db: AppDatabase) {
 
     companion object {
         const val BACKUP_APP_TAG = "power-debug-log"
-        const val BACKUP_SCHEMA = 11
+        const val BACKUP_SCHEMA = 12
         /** 时间戳冲突窗口（7.7）：仅当"同一条目双方都有"且时间差超过该值时才视为冲突、交由用户裁决 */
         const val CONFLICT_WINDOW_MS = 5L * 60L * 1000L
     }
@@ -1014,6 +1053,8 @@ class Repository(private val db: AppDatabase) {
     private fun projJson(p: Project) = JSONObject()
         .put("id", p.id).put("name", p.name).put("code", p.code)
         .put("remark", p.remark)
+        .put("debugStartDate", p.debugStartDate)
+        .put("debugEndDate", p.debugEndDate)
         .put("createdAt", p.createdAt).put("updatedAt", p.updatedAt)
 
     private fun typeJson(t: CabinetType) = JSONObject()
@@ -1194,6 +1235,8 @@ class Repository(private val db: AppDatabase) {
                     pb.projects += Project(
                         id = getString("id"), name = getString("name"),
                         code = optString("code"), remark = optString("remark"),
+                        debugStartDate = optLong("debugStartDate"),
+                        debugEndDate = optLong("debugEndDate"),
                         createdAt = optLong("createdAt"), updatedAt = optLong("updatedAt")
                     )
                 }
@@ -1420,6 +1463,8 @@ class Repository(private val db: AppDatabase) {
                     projects += Project(
                         id = getString("id"), name = getString("name"),
                         code = optString("code"), remark = optString("remark"),
+                        debugStartDate = optLong("debugStartDate"),
+                        debugEndDate = optLong("debugEndDate"),
                         createdAt = optLong("createdAt"), updatedAt = optLong("updatedAt")
                     )
                 }
@@ -1778,7 +1823,10 @@ class Repository(private val db: AppDatabase) {
             // ---------- 1) 数据合并：跳过已删id与父链已断的孤儿行，防借旧快照复活 ----------
             // 父表在前，保证外键引用顺序；UPDATE不触发级联，父行更新安全
             val lp = projectDao.allOnce().associateBy { it.id }
-            val insP = pb.projects.filter { it.id !in lp && !deadProject(it.id) }
+            val insP = pb.projects
+                .filter { it.id !in lp && !deadProject(it.id) }
+                // 旧版快照(≤11)无调试日期键 → 起始日期回填为创建日期，与数据库迁移口径一致
+                .map { if (it.debugStartDate == 0L) it.copy(debugStartDate = it.createdAt) else it }
             val updP = pb.projects.filter { !deadProject(it.id) && lp[it.id]?.let { l -> remoteNewer(favor, it.updatedAt, l.updatedAt) } == true }
             projectDao.insertAll(insP); projectDao.updateAll(updP)
             r.newProjects = insP.size; r.updProjects = updP.size

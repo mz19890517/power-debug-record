@@ -57,6 +57,18 @@ interface ProjectDao {
 
     @Query("SELECT COUNT(*) FROM projects")
     suspend fun count(): Int
+
+    /** 项目启用待测项总数（enabled=1） */
+    @Query("SELECT COUNT(*) FROM planned_items pi INNER JOIN instances i ON pi.instanceId = i.id WHERE i.projectId = :projectId AND pi.enabled = 1")
+    suspend fun enabledPlannedCount(projectId: String): Int
+
+    /** 项目仍处于「未测(0)或未通过(2)」的启用待测项数 */
+    @Query("SELECT COUNT(*) FROM planned_items pi INNER JOIN instances i ON pi.instanceId = i.id WHERE i.projectId = :projectId AND pi.enabled = 1 AND pi.result != 1")
+    suspend fun notPassedPlannedCount(projectId: String): Int
+
+    /** 项目未消除故障数（status=0） */
+    @Query("SELECT COUNT(*) FROM fault_records f INNER JOIN debug_logs l ON f.logId = l.id INNER JOIN instances i ON l.instanceId = i.id WHERE i.projectId = :projectId AND f.status = 0")
+    suspend fun pendingFaultCount(projectId: String): Int
 }
 
 @Dao

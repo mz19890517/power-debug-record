@@ -12,8 +12,8 @@ android {
         applicationId = "com.powerdebug.record"
         minSdk = 28
         targetSdk = 34
-        versionCode = 32
-        versionName = "2.29"
+        versionCode = 33
+        versionName = "2.30"
     }
 
     // 签名密码经环境变量注入（GitHub Secrets），仓库内不出现明文

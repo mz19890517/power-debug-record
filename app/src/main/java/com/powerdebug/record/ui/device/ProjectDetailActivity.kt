@@ -809,18 +809,34 @@ class ProjectDetailActivity : AppCompatActivity() {
     }
 
     private fun editProject(p: Project) {
-        val dlgView = layoutInflater.inflate(R.layout.dialog_input_multiline, null)
-        val prompt = dlgView.findViewById<TextView>(R.id.tv_prompt)
-        val input = dlgView.findViewById<EditText>(R.id.et_input)
-        input.minLines = 3
-        prompt.text = getString(R.string.project_name) + "\n" + getString(R.string.project_code) + "\n" + getString(R.string.project_remark)
-        input.setText("${p.name}\n${p.code}\n${p.remark}")
+        val dlgView = layoutInflater.inflate(R.layout.dialog_project_edit, null)
+        val etName = dlgView.findViewById<EditText>(R.id.et_name)
+        val etCode = dlgView.findViewById<EditText>(R.id.et_code)
+        val etRemark = dlgView.findViewById<EditText>(R.id.et_remark)
+        val tvStart = dlgView.findViewById<TextView>(R.id.tv_debug_start)
+        val tvEnd = dlgView.findViewById<TextView>(R.id.tv_debug_end)
+        val btnClear = dlgView.findViewById<TextView>(R.id.btn_clear_debug_end)
+
+        var startMs = p.debugStartDate
+        var endMs = p.debugEndDate
+        fun refreshDateLabels() {
+            tvStart.text = getString(R.string.debug_start_label) + "：点击设置 → " + (if (startMs > 0) DT.dateOnly(startMs) else getString(R.string.debug_end_unset))
+            tvEnd.text = getString(R.string.debug_end_label) + "：点击设置 → " + (if (endMs > 0) DT.dateOnly(endMs) else getString(R.string.debug_end_unset))
+            btnClear.visibility = if (endMs > 0) View.VISIBLE else View.GONE
+        }
+        etName.setText(p.name)
+        etCode.setText(p.code)
+        etRemark.setText(p.remark)
+        refreshDateLabels()
+        tvStart.setOnClickListener { DT.pickDate(this, startMs) { tvStart.post { startMs = it; refreshDateLabels() } } }
+        tvEnd.setOnClickListener { DT.pickDate(this, endMs) { tvEnd.post { endMs = it; refreshDateLabels() } } }
+        btnClear.setOnClickListener { endMs = 0L; refreshDateLabels() }
+
         AlertDialog.Builder(this)
             .setTitle(R.string.edit_project)
             .setView(dlgView)
             .setPositiveButton(R.string.save) { _, _ ->
-                val lines = input.text?.toString()?.lines().orEmpty()
-                val name = lines.getOrNull(0)?.trim().orEmpty()
+                val name = etName.text?.toString()?.trim().orEmpty()
                 if (name.isEmpty()) {
                     Toast.makeText(this, R.string.name_required, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
@@ -829,8 +845,10 @@ class ProjectDetailActivity : AppCompatActivity() {
                     App.repo.saveProject(
                         p.copy(
                             name = name,
-                            code = lines.getOrNull(1)?.trim().orEmpty(),
-                            remark = lines.drop(2).joinToString("\n").trim()
+                            code = etCode.text?.toString()?.trim().orEmpty(),
+                            remark = etRemark.text?.toString()?.trim().orEmpty(),
+                            debugStartDate = startMs,
+                            debugEndDate = endMs
                         )
                     )
                     this@ProjectDetailActivity.project = App.repo.getProject(projectId)

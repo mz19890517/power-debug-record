@@ -173,30 +173,54 @@ class DeviceFragment : Fragment() {
     }
 
     private fun editProjectDialog(existing: com.powerdebug.record.data.db.Project?) {
-        val dlgView = layoutInflater.inflate(R.layout.dialog_input_multiline, null)
-        val prompt = dlgView.findViewById<android.widget.TextView>(R.id.tv_prompt)
-        val input = dlgView.findViewById<android.widget.EditText>(R.id.et_input)
-        prompt.text = getString(R.string.project_name) + "\n" + getString(R.string.project_code) + "\n" + getString(R.string.project_remark)
-        existing?.let {
-            input.setText("${it.name}\n${it.code}\n${it.remark}")
+        val dlgView = layoutInflater.inflate(R.layout.dialog_project_edit, null)
+        val etName = dlgView.findViewById<android.widget.EditText>(R.id.et_name)
+        val etCode = dlgView.findViewById<android.widget.EditText>(R.id.et_code)
+        val etRemark = dlgView.findViewById<android.widget.EditText>(R.id.et_remark)
+        val tvStart = dlgView.findViewById<android.widget.TextView>(R.id.tv_debug_start)
+        val tvEnd = dlgView.findViewById<android.widget.TextView>(R.id.tv_debug_end)
+        val btnClear = dlgView.findViewById<android.widget.TextView>(R.id.btn_clear_debug_end)
+
+        // 选中的日期（中央可变状态）；新建默认为创建时刻(now)，即起始=创建日期
+        var startMs = if (existing == null) System.currentTimeMillis() else existing.debugStartDate
+        var endMs = existing?.debugEndDate ?: 0L
+
+        fun refreshDateLabels() {
+            tvStart.text = getString(R.string.debug_start_label) + "：点击设置 → " + (if (startMs > 0) DT.dateOnly(startMs) else getString(R.string.debug_end_unset))
+            tvEnd.text = getString(R.string.debug_end_label) + "：点击设置 → " + (if (endMs > 0) DT.dateOnly(endMs) else getString(R.string.debug_end_unset))
+            btnClear.visibility = if (endMs > 0) android.view.View.VISIBLE else android.view.View.GONE
         }
+
+        if (existing != null) etName.setText(existing.name)
+        if (existing != null) etCode.setText(existing.code)
+        if (existing != null) etRemark.setText(existing.remark)
+        refreshDateLabels()
+
+        tvStart.setOnClickListener {
+            DT.pickDate(requireContext(), startMs) { tvStart.post { startMs = it; refreshDateLabels() } }
+        }
+        tvEnd.setOnClickListener {
+            DT.pickDate(requireContext(), endMs) { tvEnd.post { endMs = it; refreshDateLabels() } }
+        }
+        btnClear.setOnClickListener { endMs = 0L; refreshDateLabels() }
+
         AlertDialog.Builder(requireContext())
             .setTitle(if (existing == null) R.string.new_project else R.string.edit_project)
             .setView(dlgView)
             .setPositiveButton(R.string.save) { _, _ ->
-                val lines = input.text?.toString()?.lines().orEmpty()
-                val name = lines.getOrNull(0)?.trim().orEmpty()
+                val name = etName.text?.toString()?.trim().orEmpty()
                 if (name.isEmpty()) {
                     android.widget.Toast.makeText(requireContext(), R.string.name_required, android.widget.Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                val code = lines.getOrNull(1)?.trim().orEmpty()
-                val remark = lines.drop(2).joinToString("\n").trim()
+                val code = etCode.text?.toString()?.trim().orEmpty()
+                val remark = etRemark.text?.toString()?.trim().orEmpty()
                 viewLifecycleOwner.lifecycleScope.launch {
                     App.repo.saveProject(
                         com.powerdebug.record.data.db.Project(
                             id = existing?.id.orEmpty(), name = name,
                             code = code, remark = remark,
+                            debugStartDate = startMs, debugEndDate = endMs,
                             createdAt = existing?.createdAt ?: System.currentTimeMillis()
                         )
                     )
@@ -307,6 +331,12 @@ private class ProjectAdapter(
             if (item.project.code.isNotBlank()) append(" · ${item.project.code}")
             if (item.pendingTests > 0 || item.failedTests > 0 || item.pendingFaults > 0)
                 append(" · 待测${item.pendingTests}·未通过${item.failedTests}·待处理${item.pendingFaults}")
+            if (item.project.debugStartDate > 0 || item.project.debugEndDate > 0) {
+                val start = DT.dateOnly(item.project.debugStartDate)
+                val end = if (item.project.debugEndDate > 0) DT.dateOnly(item.project.debugEndDate)
+                          else h.ib.root.context.getString(R.string.debug_end_unset)
+                append(" · ${h.ib.root.context.getString(R.string.debug_period_fmt, start, end)}")
+            }
             if (item.project.remark.isNotBlank()) append(" · ${item.project.remark}")
         }
         h.ib.root.setOnClickListener { onClick(item) }

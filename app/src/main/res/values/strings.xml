@@ -72,6 +72,13 @@
     <string name="project_name">项目名称（必填）</string>
     <string name="project_code">工程编号（选填）</string>
     <string name="project_remark">备注（选填）</string>
+    <string name="debug_start_label">调试起始日期</string>
+    <string name="debug_end_label">调试完成日期</string>
+    <string name="debug_end_unset">未设置</string>
+    <string name="debug_end_auto_hint">（自动=全部测试完成且故障消除；撤回重测自动清零）</string>
+    <string name="debug_end_tap_hint">点击上方的完成日期可手动修改</string>
+    <string name="clear_debug_end">清除完成日期（重新进行中）</string>
+    <string name="debug_period_fmt">调试：%1$s ~ %2$s</string>
     <string name="new_type">新建柜子类型</string>
     <string name="edit_type">重命名类型</string>
     <string name="type_name">类型名称（必填）\n如：直流馈线柜 / 充电屏</string>

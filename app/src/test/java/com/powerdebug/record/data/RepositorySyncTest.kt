@@ -321,4 +321,57 @@ class RepositorySyncTest {
         repo.mergeJson(s)
         assertEquals(DebugLog.LOG_TYPE_PASS, db.debugLogDao().allOnce().single().logType)
     }
+
+    // ---------- 调试起始/完成日期快照往返（schemaVersion=12，v2.30） ----------
+
+    @Test
+    fun debug_dates_survive_snapshot_roundtrip_and_fresh_merge() = runTest {
+        val start = t0
+        val end = t0 + 3_600_000L
+        val s = snapshot(
+            // 带调试日期的项目行
+            projects = listOf(row(
+                "id" to "p1", "name" to "项目p1", "code" to "", "remark" to "",
+                "debugStartDate" to start, "debugEndDate" to end,
+                "createdAt" to start, "updatedAt" to start
+            )),
+            types = listOf(type("t1", t0)),
+            instances = listOf(instance("i1", "p1", "t1", t0)),
+            logs = listOf(log("l1", "i1", t0))
+        )
+        val r = repo.mergeJson(s)
+        assertEquals(1, r.newProjects)
+        assertEquals(start, db.projectDao().getByIdOnce("p1")?.debugStartDate)
+        assertEquals(end, db.projectDao().getByIdOnce("p1")?.debugEndDate)
+
+        // global + 项目快照 → 全新库合并后日期保留
+        val global = repo.globalSnapshot()
+        val project = repo.projectSnapshot("p1")
+        val fresh = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(), AppDatabase::class.java
+        ).allowMainThreadQueries().build()
+        try {
+            val freshRepo = Repository(fresh)
+            freshRepo.mergeJson(global)
+            freshRepo.mergeJson(project)
+            assertEquals(start, fresh.projectDao().getByIdOnce("p1")?.debugStartDate)
+            assertEquals(end, fresh.projectDao().getByIdOnce("p1")?.debugEndDate)
+        } finally {
+            fresh.close()
+        }
+    }
+
+    @Test
+    fun debug_start_defaults_to_createdAt_when_missing_in_old_snapshot() = runTest {
+        // 旧格式快照(≤11)项目行无 debugStartDate 键 → 合并时回填为 createdAt（与数据库迁移口径一致）
+        val s = snapshot(
+            projects = listOf(project("p1", t0)),
+            types = listOf(type("t1", t0)),
+            instances = listOf(instance("i1", "p1", "t1", t0)),
+            logs = listOf(log("l1", "i1", t0))
+        )
+        repo.mergeJson(s)
+        assertEquals(t0, db.projectDao().getByIdOnce("p1")?.debugStartDate)
+        assertEquals(0L, db.projectDao().getByIdOnce("p1")?.debugEndDate)
+    }
 }

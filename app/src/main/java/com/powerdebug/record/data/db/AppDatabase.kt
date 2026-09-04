@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DeletedItem::class,
         DeletedProject::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -293,11 +293,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v11→v12：projects 增加 调试起始/完成日期（debugStartDate/debugEndDate），新项目起始=创建日期，存量项目回填 = createdAt */
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `projects` ADD COLUMN `debugStartDate` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `projects` ADD COLUMN `debugEndDate` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `projects` SET `debugStartDate` = `createdAt` WHERE `debugStartDate` = 0")
+            }
+        }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
                 .addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                    MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
+                    MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
+                    MIGRATION_11_12
                 )
                 .build()
     }
