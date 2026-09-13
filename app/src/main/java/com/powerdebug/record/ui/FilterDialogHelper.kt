@@ -53,6 +53,7 @@ object FilterDialogHelper {
             when (s) {
                 0 -> view.findViewById<RadioButton>(R.id.rbStatusFault)?.isChecked = true
                 1 -> view.findViewById<RadioButton>(R.id.rbStatusPass)?.isChecked = true
+                2 -> view.findViewById<RadioButton>(R.id.rbStatusPendingFault)?.isChecked = true
             }
         }
 
@@ -160,6 +161,7 @@ object FilterDialogHelper {
                 val status = when (rgStatus.checkedRadioButtonId) {
                     R.id.rbStatusFault -> 0
                     R.id.rbStatusPass -> 1
+                    R.id.rbStatusPendingFault -> 2
                     else -> null
                 }
                 // 收集测试人员

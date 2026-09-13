@@ -20,6 +20,8 @@ interface ProjectDao {
         """SELECT pr.*, 
         (SELECT COUNT(*) FROM instances i WHERE i.projectId = pr.id) AS cabinetCount,
         (SELECT COUNT(*) FROM debug_logs l INNER JOIN instances i2 ON l.instanceId = i2.id WHERE i2.projectId = pr.id) AS logCount,
+        (SELECT COUNT(*) FROM planned_items pi6 INNER JOIN instances i7 ON pi6.instanceId = i7.id
+            WHERE i7.projectId = pr.id AND pi6.enabled = 1) AS totalTests,
         (SELECT COUNT(*) FROM planned_items pi INNER JOIN instances i3 ON pi.instanceId = i3.id
             WHERE i3.projectId = pr.id AND pi.enabled = 1 AND pi.result = 0) AS pendingTests,
         (SELECT COUNT(*) FROM planned_items pi5 INNER JOIN instances i5 ON pi5.instanceId = i5.id
@@ -161,6 +163,7 @@ interface InstanceDao {
     /** 项目详情页柜子行：附带实时待测/未通过/待处理故障数（与调试日志页同源） */
     @Query(
         """SELECT i.*,
+        (SELECT COUNT(*) FROM planned_items pi3 WHERE pi3.instanceId = i.id AND pi3.enabled = 1) AS totalTests,
         (SELECT COUNT(*) FROM planned_items pi WHERE pi.instanceId = i.id AND pi.enabled = 1 AND pi.result = 0) AS pendingTests,
         (SELECT COUNT(*) FROM planned_items pi2 WHERE pi2.instanceId = i.id AND pi2.enabled = 1 AND pi2.result = 2) AS failedTests,
         (SELECT COUNT(*) FROM fault_records f INNER JOIN debug_logs l ON f.logId = l.id

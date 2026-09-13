@@ -291,14 +291,16 @@ data class ProjectListItem(
     @Embedded val project: Project,
     val cabinetCount: Int,
     val logCount: Int,
+    val totalTests: Int,
     val pendingTests: Int,
     val failedTests: Int,
     val pendingFaults: Int
 )
 
-/** 项目详情页柜子行：柜子 + 实时待测/未通过/待处理统计 */
+/** 项目详情页柜子行：柜子 + 实时测试项总数/待测/未通过/待处理统计 */
 data class InstanceStatusRow(
     @Embedded val instance: CabinetInstance,
+    val totalTests: Int,
     val pendingTests: Int,
     val failedTests: Int,
     val pendingFaults: Int

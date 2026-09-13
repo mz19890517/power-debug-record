@@ -17,4 +17,7 @@
     <color name="pending_fg">#B3261E</color>
     <color name="resolved_bg">#E6F4EA</color>
     <color name="resolved_fg">#137333</color>
+    <!-- 测试未完成（黄） -->
+    <color name="warn_bg">#FFF3CD</color>
+    <color name="warn_fg">#8A6D00</color>
 </resources>

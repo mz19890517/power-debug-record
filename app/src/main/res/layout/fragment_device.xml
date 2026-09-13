@@ -53,6 +53,16 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_export_multi"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/multi_export"
+                    android:textSize="12sp" />
+
                 <ImageButton
                     android:id="@+id/btn_add_project"
                     android:layout_width="40dp"

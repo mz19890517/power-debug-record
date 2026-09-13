@@ -939,6 +939,13 @@ class Repository(private val db: AppDatabase) {
                 1 -> { // 仅通过（logType == PASS）
                     logs = logs.filter { it.log.logType == DebugLog.LOG_TYPE_PASS }
                 }
+                2 -> { // 仅含未处理故障：有故障记录且全部仍为未解决（无已处理故障）
+                    val statusById = faults.groupBy({ it.fault.logId }, { it.fault.status })
+                    logs = logs.filter { entry ->
+                        val st = statusById[entry.log.id].orEmpty()
+                        st.isNotEmpty() && st.all { it == FaultRecord.STATUS_PENDING }
+                    }
+                }
             }
         }
         // 测试人员筛选
@@ -982,6 +989,23 @@ class Repository(private val db: AppDatabase) {
         val logIds = ls.map { it.log.id }.toSet()
         val fs = filteredFaults.filter { it.fault.logId in logIds }
         return ls to fs
+    }
+
+    /**
+     * 多项目批量导出：一次读取全量日志/故障，按所选项目过滤（避免逐项目重复全表扫描）。
+     * 与 collectExportOf 同源，供「多选项目导出日志」使用。
+     */
+    suspend fun collectExportForProjects(
+        projectIds: Collection<String>,
+        filter: ExportFilter = ExportFilter()
+    ): Pair<List<LogListItem>, List<FaultExportRow>> {
+        val ids = projectIds.toSet()
+        if (ids.isEmpty()) return emptyList<LogListItem>() to emptyList()
+        val (allLogs, allFaults) = collectExport(filter)
+        val instIds = instanceDao.allOnce().filter { it.projectId in ids }.map { it.id }.toSet()
+        val logs = allLogs.filter { it.log.instanceId in instIds }
+        val logIds = logs.map { it.log.id }.toSet()
+        return logs to allFaults.filter { it.fault.logId in logIds }
     }
 
     companion object {

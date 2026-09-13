@@ -31,6 +31,7 @@ import com.powerdebug.record.core.XlsxWriter
 import com.powerdebug.record.data.ExportFilter
 import com.powerdebug.record.data.db.CabinetInstance
 import com.powerdebug.record.data.db.InstanceStatusRow
+import com.powerdebug.record.ui.CardStatus
 import com.powerdebug.record.ui.FilterDialogHelper
 import com.powerdebug.record.data.db.Project
 import com.powerdebug.record.databinding.ItemSimpleCardBinding
@@ -184,6 +185,7 @@ class ProjectDetailActivity : AppCompatActivity() {
 
     private fun refreshHeader(rows: List<InstanceStatusRow>) {
         val p = project ?: return
+        val totalTests = rows.sumOf { it.totalTests }
         val pendingTests = rows.sumOf { it.pendingTests }
         val failedTests = rows.sumOf { it.failedTests }
         val pendingFaults = rows.sumOf { it.pendingFaults }
@@ -191,7 +193,9 @@ class ProjectDetailActivity : AppCompatActivity() {
             appendLine("项目：${p.name}")
             if (p.code.isNotBlank()) appendLine("工程编号：${p.code}")
             if (p.remark.isNotBlank()) appendLine("备注：${p.remark}")
-            append("共 ${rows.size} 台柜子 · 待测 $pendingTests · 未通过 $failedTests · 待处理故障 $pendingFaults")
+            append("共 ${rows.size} 台柜子 · 测试 $totalTests 项")
+            if (pendingTests > 0 || failedTests > 0 || pendingFaults > 0)
+                append(" · 待测 $pendingTests · 未通过 $failedTests · 待处理故障 $pendingFaults")
         }
     }
 
@@ -969,6 +973,7 @@ class ProjectDetailActivity : AppCompatActivity() {
         }
 
         private fun bindListRow(h: ListVH, row: InstanceStatusRow) {
+            val ctx = h.ib.root.context
             val item = row.instance
             val displayName = if (isShortNameMode) {
                 item.shortName.ifBlank { item.name }
@@ -986,19 +991,21 @@ class ProjectDetailActivity : AppCompatActivity() {
                 if (item.location.isNotBlank()) append(" · ${item.location}")
                 if (item.installer.isNotBlank()) append(" · 安装:${item.installer}")
             }
-            val midPart = "  待测 ${row.pendingTests} · "
+            val totalPart = "  " + ctx.getString(R.string.total_tests_fmt, row.totalTests) + " · "
+            val midPart = "待测 ${row.pendingTests} · "
             val failPart = "未通过 ${row.failedTests}"
             val faultPart = " · 待处理故障 ${row.pendingFaults}"
-            val ssb = SpannableStringBuilder(base).append(midPart).append(failPart).append(faultPart)
+            val ssb = SpannableStringBuilder(base).append(totalPart).append(midPart).append(failPart).append(faultPart)
             if (row.pendingTests > 0) {
+                val s = base.length + totalPart.length
                 ssb.setSpan(
                     ForegroundColorSpan(Color.parseColor("#B8860B")),
-                    base.length, base.length + midPart.length,
+                    s, s + midPart.length,
                     SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
             if (row.failedTests > 0 || row.pendingFaults > 0) {
-                val start = base.length + midPart.length
+                val start = base.length + totalPart.length + midPart.length
                 ssb.setSpan(
                     ForegroundColorSpan(Color.parseColor("#D32F2F")),
                     start, ssb.length,
@@ -1006,6 +1013,10 @@ class ProjectDetailActivity : AppCompatActivity() {
                 )
             }
             h.ib.tvSub.text = ssb
+            CardStatus.apply(
+                h.ib.root,
+                CardStatus.state(row.totalTests, row.pendingTests, row.failedTests, row.pendingFaults)
+            )
             h.ib.root.setOnClickListener { onClick(row) }
             h.ib.root.setOnLongClickListener { onLongClick(row); true }
         }
@@ -1032,6 +1043,10 @@ class ProjectDetailActivity : AppCompatActivity() {
 
                 cardView.setOnClickListener { onClick(item) }
                 cardView.setOnLongClickListener { onLongClick(item); true }
+                CardStatus.apply(
+                    cardView as com.google.android.material.card.MaterialCardView,
+                    CardStatus.state(item.totalTests, item.pendingTests, item.failedTests, item.pendingFaults)
+                )
 
                 container.addView(cardView)
             }
@@ -1061,6 +1076,10 @@ class ProjectDetailActivity : AppCompatActivity() {
 
             h.ib.root.setOnClickListener { onClick(row) }
             h.ib.root.setOnLongClickListener { onLongClick(row); true }
+            CardStatus.apply(
+                h.ib.root,
+                CardStatus.state(row.totalTests, row.pendingTests, row.failedTests, row.pendingFaults)
+            )
         }
 
         inner class ListVH(val ib: ItemSimpleCardBinding) : RecyclerView.ViewHolder(ib.root)

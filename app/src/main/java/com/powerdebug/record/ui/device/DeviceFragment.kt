@@ -2,7 +2,11 @@ package com.powerdebug.record.ui.device
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +22,7 @@ import com.powerdebug.record.core.ExportSheets
 import com.powerdebug.record.core.XlsxWriter
 import com.powerdebug.record.data.ExportFilter
 import com.powerdebug.record.data.db.ProjectListItem
+import com.powerdebug.record.ui.CardStatus
 import com.powerdebug.record.ui.FilterDialogHelper
 import com.powerdebug.record.data.db.TypeListItem
 import com.powerdebug.record.databinding.FragmentDeviceBinding
@@ -72,6 +77,7 @@ class DeviceFragment : Fragment() {
 
         b.btnAddProject.setOnClickListener { editProjectDialog(null) }
         b.btnAddType.setOnClickListener { editTypeDialog(null) }
+        b.btnExportMulti.setOnClickListener { requestMultiExport() }
 
         b.tabs.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
@@ -141,6 +147,85 @@ class DeviceFragment : Fragment() {
         FilterDialogHelper.show(requireContext(), viewLifecycleOwner.lifecycleScope, currentProjectFilter) { filter ->
             currentProjectFilter = filter
             exportLauncher.launch("电源柜调试日志_${item.project.name}_${DT.fileStamp()}.xlsx")
+        }
+    }
+
+    // ---------- 多项目批量导出 ----------
+
+    private var exportProjectIds = emptySet<String>()
+    private val exportMultiLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(XLSX_MIME)
+    ) { uri -> uri?.let { doMultiExport(it) } }
+
+    /** 多选项目：弹勾选对话框，确认后走系统"另存为"导出合并日志 */
+    private fun requestMultiExport() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projects = withContext(Dispatchers.IO) { App.db.projectDao().allOnce() }
+            if (projects.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.empty_projects, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val dlgView = layoutInflater.inflate(R.layout.dialog_multi_export, null)
+            val container = dlgView.findViewById<android.widget.LinearLayout>(R.id.ll_projects)
+            val cbAll = dlgView.findViewById<android.widget.CheckBox>(R.id.cb_select_all)
+            val selected = mutableSetOf<String>()
+            projects.forEach { p ->
+                val cb = android.widget.CheckBox(requireContext()).apply {
+                    text = p.name
+                    tag = p.id
+                }
+                container.addView(cb)
+                cb.setOnCheckedChangeListener { _, isChecked ->
+                    if (isChecked) selected.add(p.id) else selected.remove(p.id)
+                }
+            }
+            cbAll.setOnCheckedChangeListener { _, isChecked ->
+                for (i in 0 until container.childCount) {
+                    (container.getChildAt(i) as? android.widget.CheckBox)?.isChecked = isChecked
+                }
+            }
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.multi_export_title)
+                .setView(dlgView)
+                .setPositiveButton(R.string.multi_export_go) { _, _ ->
+                    if (selected.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.multi_export_none, Toast.LENGTH_SHORT).show()
+                    } else {
+                        exportProjectIds = selected.toSet()
+                        exportMultiLauncher.launch("电源柜调试日志_多项目_${DT.fileStamp()}.xlsx")
+                    }
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+    }
+
+    private fun doMultiExport(uri: android.net.Uri) {
+        if (exportProjectIds.isEmpty()) return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val (logs, faults) = App.repo.collectExportForProjects(exportProjectIds, currentProjectFilter)
+                withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                        XlsxWriter.write(out, ExportSheets.build(
+                            requireContext(), logs, faults,
+                            logColumns = currentProjectFilter.logColumns,
+                            faultColumns = currentProjectFilter.faultColumns
+                        ))
+                    } ?: throw IllegalStateException("无法打开输出流")
+                }
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.export_ok, uri.lastPathSegment ?: ""),
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.op_failed, e.message ?: e.javaClass.simpleName),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 
@@ -325,20 +410,48 @@ private class ProjectAdapter(
 
     override fun onBindViewHolder(h: VH, pos: Int) {
         val item = data[pos]
+        val ctx = h.ib.root.context
         h.ib.tvName.text = item.project.name
-        h.ib.tvSub.text = buildString {
-            append(h.ib.root.context.getString(R.string.cabinets_fmt, item.cabinetCount, item.logCount))
+        val base = buildString {
+            append(ctx.getString(R.string.cabinets_fmt, item.cabinetCount, item.logCount))
+            append(" · " + ctx.getString(R.string.total_tests_fmt, item.totalTests))
             if (item.project.code.isNotBlank()) append(" · ${item.project.code}")
+        }
+        val statPart = buildString {
             if (item.pendingTests > 0 || item.failedTests > 0 || item.pendingFaults > 0)
                 append(" · 待测${item.pendingTests}·未通过${item.failedTests}·待处理${item.pendingFaults}")
+        }
+        val tailPart = buildString {
             if (item.project.debugStartDate > 0 || item.project.debugEndDate > 0) {
                 val start = DT.dateOnly(item.project.debugStartDate)
                 val end = if (item.project.debugEndDate > 0) DT.dateOnly(item.project.debugEndDate)
-                          else h.ib.root.context.getString(R.string.debug_end_unset)
-                append(" · ${h.ib.root.context.getString(R.string.debug_period_fmt, start, end)}")
+                          else ctx.getString(R.string.debug_end_unset)
+                append(" · " + ctx.getString(R.string.debug_period_fmt, start, end))
             }
             if (item.project.remark.isNotBlank()) append(" · ${item.project.remark}")
         }
+        // 副标题按细粒度着色：未测完段黄、待处理故障段红，与卡片底色互补
+        val ssb = SpannableStringBuilder(base).append(statPart).append(tailPart)
+        if (item.pendingTests > 0 || item.failedTests > 0) {
+            val end = if (item.pendingFaults > 0) base.length + statPart.indexOf("待处理")
+                      else ssb.length
+            ssb.setSpan(
+                ForegroundColorSpan(Color.parseColor("#B8860B")),
+                base.length, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        if (item.pendingFaults > 0) {
+            val start = base.length + statPart.indexOf("待处理")
+            ssb.setSpan(
+                ForegroundColorSpan(Color.parseColor("#D32F2F")),
+                start, ssb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        h.ib.tvSub.text = ssb
+        CardStatus.apply(
+            h.ib.root,
+            CardStatus.state(item.totalTests, item.pendingTests, item.failedTests, item.pendingFaults)
+        )
         h.ib.root.setOnClickListener { onClick(item) }
         h.ib.root.setOnLongClickListener { onLongClick(item); true }
     }

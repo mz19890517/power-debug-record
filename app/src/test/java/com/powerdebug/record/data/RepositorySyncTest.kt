@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.powerdebug.record.data.db.AppDatabase
 import com.powerdebug.record.data.db.DebugLog
 import com.powerdebug.record.data.db.DeletedItem
+import com.powerdebug.record.data.db.FaultRecord
 import kotlinx.coroutines.test.runTest
 import org.json.JSONArray
 import org.json.JSONObject
@@ -373,5 +374,44 @@ class RepositorySyncTest {
         repo.mergeJson(s)
         assertEquals(t0, db.projectDao().getByIdOnce("p1")?.debugStartDate)
         assertEquals(0L, db.projectDao().getByIdOnce("p1")?.debugEndDate)
+    }
+
+    // ---------- 导出筛选「仅含未处理故障」（status=2，v2.31） ----------
+
+    private fun fault(id: String, logId: String, status: Int) =
+        row("id" to id, "logId" to logId, "circuit" to "", "symptom" to "现象$id",
+            "solution" to "方法$id", "occurredAt" to t0,
+            "resolvedAt" to if (status == FaultRecord.STATUS_RESOLVED) t0 else 0,
+            "status" to status, "updatedAt" to t0)
+
+    @Test
+    fun export_filter_pending_fault_lists_logs_with_only_unresolved_faults() = runTest {
+        val s = snapshot(
+            projects = listOf(project("p1", t0)),
+            types = listOf(type("t1", t0)),
+            instances = listOf(instance("i1", "p1", "t1", t0)),
+            logs = listOf(
+                log("l-pass", "i1", t0, DebugLog.LOG_TYPE_PASS),
+                log("l-pending", "i1", t0 + 1, DebugLog.LOG_TYPE_FAULT),
+                log("l-mixed", "i1", t0 + 2, DebugLog.LOG_TYPE_FAULT),
+                log("l-resolved", "i1", t0 + 3, DebugLog.LOG_TYPE_FAULT)
+            ),
+            faults = listOf(
+                fault("f-pending", "l-pending", FaultRecord.STATUS_PENDING),
+                fault("f-mix-a", "l-mixed", FaultRecord.STATUS_PENDING),
+                fault("f-mix-b", "l-mixed", FaultRecord.STATUS_RESOLVED),
+                fault("f-done", "l-resolved", FaultRecord.STATUS_RESOLVED)
+            )
+        )
+        repo.mergeJson(s)
+
+        // 仅含未处理故障：有故障且全部未解决（任一已解决都不算）
+        val (logs, faults) = repo.collectExport(ExportFilter(status = 2))
+        assertEquals(listOf("l-pending"), logs.map { it.log.id })
+        assertEquals(setOf("l-pending"), faults.map { it.fault.logId }.toSet())
+
+        // 基准：仅含故障(status=0)会带出 l-pending 与 l-mixed
+        val (fLogs, _) = repo.collectExport(ExportFilter(status = 0))
+        assertEquals(setOf("l-pending", "l-mixed"), fLogs.map { it.log.id }.toSet())
     }
 }

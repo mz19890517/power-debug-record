@@ -24,7 +24,7 @@
             android:id="@+id/rgStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:layout_marginTop="4dp">
 
             <RadioButton
@@ -38,15 +38,19 @@
                 android:id="@+id/rbStatusFault"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/export_filter_has_fault"
-                android:layout_marginStart="16dp" />
+                android:text="@string/export_filter_has_fault" />
 
             <RadioButton
                 android:id="@+id/rbStatusPass"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/export_filter_pass_only"
-                android:layout_marginStart="16dp" />
+                android:text="@string/export_filter_pass_only" />
+
+            <RadioButton
+                android:id="@+id/rbStatusPendingFault"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/export_filter_pending_fault_only" />
         </RadioGroup>
 
         <!-- 测试人员筛选 -->

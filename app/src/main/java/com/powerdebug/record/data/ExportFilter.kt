@@ -2,7 +2,7 @@ package com.powerdebug.record.data
 
 /** 导出筛选条件 + 列选择 */
 data class ExportFilter(
-    /** 状态筛选：null=全部，0=仅含故障，1=仅通过 */
+    /** 状态筛选：null=全部，0=仅含故障，1=仅通过，2=仅含未处理故障（故障全部未解决） */
     val status: Int? = null,
     /** 测试人员筛选：空=全部，非空=仅选中的人 */
     val testers: Set<String> = emptySet(),

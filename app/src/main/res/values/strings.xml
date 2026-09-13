@@ -316,6 +316,7 @@
     <string name="export_filter_all">全部</string>
     <string name="export_filter_has_fault">仅含故障</string>
     <string name="export_filter_pass_only">仅通过</string>
+    <string name="export_filter_pending_fault_only">仅含未处理故障</string>
     <string name="export_filter_testers_label">测试人员</string>
     <string name="export_filter_types_label">柜子类型</string>
     <string name="export_filter_testers_all">全部人员</string>
@@ -326,6 +327,14 @@
     <string name="export_filter_fault_cols_label">故障记录列</string>
     <string name="export_filter_cols_hint">不勾选=全部列导出</string>
     <string name="export_filter_no_testers">暂无调试员</string>
+
+    <!-- v2.31 多项目批量导出 -->
+    <string name="multi_export">多选导出</string>
+    <string name="multi_export_title">选择要导出的项目</string>
+    <string name="multi_export_select_all">全选</string>
+    <string name="multi_export_go">导出</string>
+    <string name="multi_export_none">请先勾选要导出的项目</string>
+    <string name="total_tests_fmt">共%1$d项测试</string>
 
     <!-- 网格视图 / 精简名（v2.15） -->
     <string name="grid_pending_label">待测</string>
