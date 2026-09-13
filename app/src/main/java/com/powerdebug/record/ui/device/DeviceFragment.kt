@@ -192,7 +192,11 @@ class DeviceFragment : Fragment() {
                         Toast.makeText(requireContext(), R.string.multi_export_none, Toast.LENGTH_SHORT).show()
                     } else {
                         exportProjectIds = selected.toSet()
-                        exportMultiLauncher.launch("电源柜调试日志_多项目_${DT.fileStamp()}.xlsx")
+                        // 与单项目导出一致：选完项目后弹导出筛选（状态/人员/类型/日期/列选择）
+                        FilterDialogHelper.show(requireContext(), viewLifecycleOwner.lifecycleScope, currentProjectFilter) { filter ->
+                            currentProjectFilter = filter
+                            exportMultiLauncher.launch("电源柜调试日志_多项目_${DT.fileStamp()}.xlsx")
+                        }
                     }
                 }
                 .setNegativeButton(R.string.cancel, null)
