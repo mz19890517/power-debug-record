@@ -410,8 +410,8 @@ class RepositorySyncTest {
         assertEquals(listOf("l-pending"), logs.map { it.log.id })
         assertEquals(setOf("l-pending"), faults.map { it.fault.logId }.toSet())
 
-        // 基准：仅含故障(status=0)会带出 l-pending 与 l-mixed
+        // 基准：仅含故障(status=0)带出全部有故障记录的日志（含已解决的 l-resolved）
         val (fLogs, _) = repo.collectExport(ExportFilter(status = 0))
-        assertEquals(setOf("l-pending", "l-mixed"), fLogs.map { it.log.id }.toSet())
+        assertEquals(setOf("l-pending", "l-mixed", "l-resolved"), fLogs.map { it.log.id }.toSet())
     }
 }
