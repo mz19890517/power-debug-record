@@ -244,15 +244,11 @@ class TestChecklistActivity : AppCompatActivity() {
         if (!newFaultText.isNullOrBlank()) {
             count += newFaultText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }.size
         }
-        // DB中已有的未解决故障
+        // DB中已有的未解决故障（v2.32：按「内容匹配 + faultId」的权威集合取，
+        // 旧版只看 item.faultId，关联残缺时会把未消除故障数算成 0）
         val resolved = resolvedFaultIds[item.id] ?: emptyList()
-        if (item.faultId.isNotBlank()) {
-            val faultIds = item.faultId.split(",").filter { it.isNotEmpty() && it !in resolved }
-            if (faultIds.isNotEmpty()) {
-                count += App.db.faultRecordDao().byIdsOnce(faultIds)
-                    .count { it.status == FaultRecord.STATUS_PENDING }
-            }
-        }
+        count += App.repo.faultsForTestItem(instanceId, item.content, item.faultId)
+            .count { it.status == FaultRecord.STATUS_PENDING && it.id !in resolved }
         return count
     }
 
@@ -263,22 +259,25 @@ class TestChecklistActivity : AppCompatActivity() {
             .setMessage(getString(R.string.pass_with_faults_msg, faultCount))
             .setPositiveButton(R.string.pass_resolve_all) { _, _ ->
                 // 自动消除所有未解决故障
-                autoResolveAllFaults(item)
-                passIds.add(item.id)
-                failNotes.remove(item.id)
-                adapter.notifyDataSetChanged()
-                refreshCount()
+                autoResolveAllFaults(item) {
+                    passIds.add(item.id)
+                    failNotes.remove(item.id)
+                    adapter.notifyDataSetChanged()
+                    refreshCount()
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
-    /** 自动将某测试项所有未解决故障标记为已消除 */
-    private fun autoResolveAllFaults(item: PlannedItem) {
-        val resolved = resolvedFaultIds.getOrPut(item.id) { mutableListOf() }
-        // 将PlannedItem中关联的未解决故障全部加入resolvedFaultIds
-        if (item.faultId.isNotBlank()) {
-            item.faultId.split(",").filter { it.isNotEmpty() && it !in resolved }.forEach { resolved.add(it) }
+    /** 自动将某测试项所有未解决故障标记为已消除（v2.32：按权威集合取，避免漏掉未挂关联的故障） */
+    private fun autoResolveAllFaults(item: PlannedItem, onDone: () -> Unit) {
+        lifecycleScope.launch {
+            val resolved = resolvedFaultIds.getOrPut(item.id) { mutableListOf() }
+            App.repo.faultsForTestItem(instanceId, item.content, item.faultId)
+                .filter { it.status == FaultRecord.STATUS_PENDING }
+                .forEach { if (it.id !in resolved) resolved.add(it.id) }
+            onDone()
         }
     }
 

@@ -442,6 +442,10 @@ interface FaultRecordDao {
     @Query("SELECT COUNT(*) FROM fault_records WHERE status = 0")
     suspend fun countPending(): Int
 
+    /** 全部未消除故障（v2.32 反向自愈用） */
+    @Query("SELECT * FROM fault_records WHERE status = 0 ORDER BY occurredAt, id")
+    suspend fun pendingOnce(): List<FaultRecord>
+
     @Query("DELETE FROM fault_records")
     suspend fun wipe()
 }

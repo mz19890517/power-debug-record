@@ -512,7 +512,8 @@ class Repository(private val db: AppDatabase) {
      * 遵守「故障标已解决不会自动过关，必须人工复测」的产品规则。
      */
     suspend fun healGhostFailures() {
-        val items = plannedDao.allOnce().filter { it.faultId.isNotBlank() }
+        val allItems = plannedDao.allOnce()
+        val items = allItems.filter { it.faultId.isNotBlank() }
         if (items.isEmpty()) return
         val allIds = items.flatMap { it.faultId.split(",") }.filter { it.isNotEmpty() }.distinct()
         if (allIds.isEmpty()) return
@@ -528,6 +529,29 @@ class Repository(private val db: AppDatabase) {
                     listOf(item.id), PlannedItem.RESULT_PASS,
                     if (item.doneAt > 0) item.doneAt else t,
                     item.logId, ""
+                )
+                instanceDao.getByIdOnce(item.instanceId)?.let { affectedProjects += it.projectId }
+            }
+        }
+        // 反向自愈（v2.32）：测试项已是「通过」但仍挂着未消除故障
+        //（历史缺陷：新增故障覆盖 faultId + 只按 faultId 判定"全部消除"，消掉最后一条时整项误判通过，
+        //  其余故障在测试页隐身且无法再消除）→ 改回「未通过」并把内容匹配到的故障补写回 faultId
+        val pendingFaults = faultDao.pendingOnce()
+        if (pendingFaults.isNotEmpty()) {
+            // pending 故障 → (柜子id, 测试项名) → [faultId]
+            val logCache = mutableMapOf<String, DebugLog?>()
+            val pendingByItem = mutableMapOf<Pair<String, String>, MutableList<String>>()
+            for (f in pendingFaults) {
+                val lg = logCache.getOrPut(f.logId) { logDao.getByIdOnce(f.logId) } ?: continue
+                if (lg.logType != DebugLog.LOG_TYPE_FAULT) continue
+                pendingByItem.getOrPut(lg.instanceId to lg.testContent.trim()) { mutableListOf() }.add(f.id)
+            }
+            for (item in allItems.filter { it.result == PlannedItem.RESULT_PASS }) {
+                val ids = pendingByItem[item.instanceId to item.content.trim()]?.distinct() ?: continue
+                val linked = (item.faultId.split(",") + ids).filter { it.isNotEmpty() }.distinct()
+                plannedDao.setResult(
+                    listOf(item.id), PlannedItem.RESULT_FAIL,
+                    if (item.doneAt > 0) item.doneAt else t, "", linked.joinToString(",")
                 )
                 instanceDao.getByIdOnce(item.instanceId)?.let { affectedProjects += it.projectId }
             }
@@ -679,8 +703,8 @@ class Repository(private val db: AppDatabase) {
                 // 1. 新增故障 → 每条单独生成故障日志(logType=1)【必须先创建】
                 val newlyCreatedFaults = mutableListOf<Pair<String, FaultRecord>>() // (symptom, record)
                 val newFaults = failItems[itemId]
+                val faultIds = mutableListOf<String>()
                 if (!newFaults.isNullOrEmpty()) {
-                    val faultIds = mutableListOf<String>()
                     for (symptom in newFaults) {
                         if (symptom.isBlank()) continue
                         val faultLog = DebugLog(
@@ -701,9 +725,11 @@ class Repository(private val db: AppDatabase) {
                         faultIds.add(f.id)
                         newlyCreatedFaults.add(symptom.trim() to f)
                     }
+                    // v2.32：与既有 faultId 合并（旧版直接覆盖 → 早先登记的故障丢失关联）
+                    val mergedFaultId = (item.faultId.split(",") + faultIds)
+                        .filter { it.isNotEmpty() }.distinct().joinToString(",")
                     plannedDao.setResult(
-                        listOf(itemId), PlannedItem.RESULT_FAIL, t, "",
-                        faultIds.joinToString(",")
+                        listOf(itemId), PlannedItem.RESULT_FAIL, t, "", mergedFaultId
                     )
                     if (existing.add(item.content.trim())) {
                         candDao.insert(CandidateItem(id = newId(), typeId = inst.typeId, content = item.content.trim()))
@@ -733,12 +759,18 @@ class Repository(private val db: AppDatabase) {
                         solutions[faultId]?.let { sol -> faultDao.setSolution(fr.id, sol, t) }
                     }
                     // 如果该项所有故障都已解决 → 设为通过
-                    val remainingFaultIds = mutableListOf<String>()
-                    remainingFaultIds.addAll(item.faultId.split(",").filter { it.isNotEmpty() })
-                    remainingFaultIds.addAll(newlyCreatedFaults.map { it.second.id })
-                    val remaining = faultDao.byIdsOnce(remainingFaultIds).count { it.status == FaultRecord.STATUS_PENDING }
-                    if (remaining == 0) {
+                    // v2.32：判定改用「内容匹配 + faultId」的权威故障集合，
+                    // 只看 item.faultId 会漏掉未挂关联的故障 → 消掉最后一条即误判整项通过
+                    val mergedFaultId = (item.faultId.split(",") + faultIds)
+                        .filter { it.isNotEmpty() }.distinct().joinToString(",")
+                    val matchedFaults = faultsForTestItem(instanceId, item.content, mergedFaultId)
+                    if (matchedFaults.none { it.status == FaultRecord.STATUS_PENDING }) {
                         plannedDao.setResult(listOf(itemId), PlannedItem.RESULT_PASS, t, "", "")
+                    } else {
+                        plannedDao.setResult(
+                            listOf(itemId), PlannedItem.RESULT_FAIL, t, "",
+                            matchedFaults.map { it.id }.distinct().joinToString(",")
+                        )
                     }
                 }
 

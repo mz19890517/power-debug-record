@@ -39,7 +39,7 @@
 ## 业务模型速查
 
 projects → cabinet_types(候选池 candidate_items) → cabinet_instances → debug_logs → fault_records
-planned_items：柜子实例的预选待测清单，三态 result（0未测/1通过/2未通过），未通过项复测✓才转绿。
+planned_items（v2.32 修复：新增故障时 faultId 必须与旧值**合并去重**，禁止覆盖——覆盖会丢关联、"全部消除即通过"误判整项过关；通过判定与测试页故障计数统一走 Repository.faultsForTestItem「内容匹配+faultId」权威集合；healGhostFailures 末尾附带反向自愈：已通过却仍有未消除故障的项改回未通过并补全关联）：柜子实例的预选待测清单，三态 result（0未测/1通过/2未通过），未通过项复测✓才转绿。
 测试员账号 tester_accounts + WebDAV 团队互通（util/WebDavSync.kt，快照 backup_<账号>_<本机标识>.json，同账号多机不互覆）。
 debuggers：调试员名单（v5新增），与登录账号无关，增/改/删全部要超级口令；本机「当前调试员」存SyncStore.currentDebugger（写日志自动归属、点击可切换），日志测试人员绝不回落到登录账号；改名/删除不动历史日志。复测✓时该项关联的未解决故障由Repository自动标记已解决（faultDao.resolveByIds）。
 常用模板（v2.9）：项目卡长按「加入常用模板」= saveProjectAsTemplate 把项目各柜启用待测项沉淀进各自类型候选池；「从候选池补充」按钮打开 CandidatePickerActivity 手选器（candidatesByUsage 按使用频次降序=该类型全部柜子清单出现次数，长按拖动连续多选、常用选取=使用≥2次）；柜子长按「从别的柜子拉取」= pullPlannedFromCabinet 整体覆盖本柜清单（旧项记墓碑）。
