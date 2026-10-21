@@ -182,7 +182,7 @@ class ToolsFragment : Fragment() {
      * 让用户选「保留本地」或「覆盖云端」。挂起直到弹窗关闭；对话框被取消默认按覆盖云端。
      */
     private suspend fun askSyncConflict(): ConflictFavor = withContext(Dispatchers.Main) {
-        val ctx = requireContext()
+        val ctx = context ?: return@withContext ConflictFavor.CLOUD // 已脱离时无法弹窗，按默认「覆盖云端」（与取消对话框一致，v2.33）
         suspendCancellableCoroutine { cont ->
             Builder(ctx)
                 .setTitle(R.string.sync_conflict_title)
@@ -209,18 +209,20 @@ class ToolsFragment : Fragment() {
     // ---------- 账号状态展示 ----------
 
     private fun refreshAccountUI() {
-        val ctx = requireContext()
+        val ctx = context ?: return // 已脱离（切页/销毁）时放弃刷新，避免 requireContext 崩溃（v2.33）
+        val bb = _b ?: return
         val user = SyncStore.currentUser(ctx)
-        b.tvCurrentUser.text =
+        bb.tvCurrentUser.text =
             if (user == null) "当前测试员：${getString(R.string.not_logged_in)}（日志不记录归属账号）"
             else "当前测试员：$user"
         val cfg = SyncStore.config(ctx)
-        b.tvWebdavStatus.text =
+        bb.tvWebdavStatus.text =
             if (cfg == null) "WebDAV：未配置（仅本地身份标记）"
             else "WebDAV：${cfg.url}"
         viewLifecycleOwner.lifecycleScope.launch {
             val roster = App.repo.debuggers()
-            b.tvDebuggers.text =
+            val bb2 = _b ?: return@launch // 挂起恢复时 view 可能已销毁，先取引用防 NPE
+            bb2.tvDebuggers.text =
                 if (roster.isEmpty()) getString(R.string.debugger_summary_empty)
                 else getString(R.string.debugger_summary, roster.size, roster.joinToString("、") { it.name })
         }
@@ -228,20 +230,23 @@ class ToolsFragment : Fragment() {
 
     /** 刷新当前调试员显示行；点击可快速切换（无需密码） */
     private fun refreshCurrentDebuggerUI() {
-        val cur = SyncStore.currentDebugger(requireContext())
-        b.tvCurrentDebugger.text = cur.ifEmpty { getString(R.string.debugger_none_set) }
-        b.tvCurrentDebugger.setOnClickListener {
+        val ctx = context ?: return // 已脱离（切页/销毁）时放弃刷新，避免 requireContext 崩溃（v2.33）
+        val bb = _b ?: return
+        val cur = SyncStore.currentDebugger(ctx)
+        bb.tvCurrentDebugger.text = cur.ifEmpty { getString(R.string.debugger_none_set) }
+        bb.tvCurrentDebugger.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 val roster = App.repo.debuggers()
+                val dlgCtx = context ?: return@launch // 挂起恢复时可能已脱离，改用捕获的 ctx（v2.33）
                 if (roster.isEmpty()) {
                     toast("请先添加调试员名单"); return@launch
                 }
                 val names = roster.map { it.name }.toTypedArray()
                 val checked = names.indexOf(cur).coerceAtLeast(0)
-                Builder(requireContext())
+                Builder(dlgCtx)
                     .setTitle(R.string.debugger_switch_title)
                     .setSingleChoiceItems(names, checked) { dlg, which ->
-                        SyncStore.setCurrentDebugger(requireContext(), names[which])
+                        SyncStore.setCurrentDebugger(dlgCtx, names[which])
                         toast(getString(R.string.debugger_bound_local, names[which]))
                         refreshCurrentDebuggerUI()
                         dlg.dismiss()
@@ -375,13 +380,14 @@ class ToolsFragment : Fragment() {
                 toast("暂无已注册测试员，请先登录")
                 return@launch
             }
+            val dlgCtx = context ?: return@launch // 挂起恢复时可能已脱离，改用捕获的 ctx（v2.33）
             val names = accounts.map { it.username }.toTypedArray()
-            val cur = SyncStore.currentUser(requireContext())
+            val cur = SyncStore.currentUser(dlgCtx)
             val checked = names.indexOf(cur)
-            Builder(requireContext())
+            Builder(dlgCtx)
                 .setTitle(R.string.sync_switch)
                 .setSingleChoiceItems(names, checked) { dlg, which ->
-                    SyncStore.setCurrentUser(requireContext(), names[which])
+                    SyncStore.setCurrentUser(dlgCtx, names[which])
                     refreshAccountUI()
                     dlg.dismiss()
                 }
@@ -422,8 +428,9 @@ class ToolsFragment : Fragment() {
     private fun showDebuggerManager() {
         viewLifecycleOwner.lifecycleScope.launch {
             val roster = App.repo.debuggers()
+            val dlgCtx = context ?: return@launch // 挂起恢复时可能已脱离，改用捕获的 ctx（v2.33）
             val names = roster.map { it.name }.toTypedArray()
-            Builder(requireContext())
+            Builder(dlgCtx)
                 .setTitle(getString(R.string.debugger_manager_title, roster.size))
                 .setItems(names) { _, which -> showDebuggerItemMenu(roster[which]) }
                 .setPositiveButton(R.string.debugger_add) { _, _ -> showDebuggerEditDialog(null) }
@@ -511,30 +518,37 @@ class ToolsFragment : Fragment() {
 
     // ---------- Excel 导出 ----------
 
-    private fun toast(msg: String) =
-        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+    /** Fragment 已脱离（切页/销毁）时静默放弃，避免挂起恢复后 requireContext 抛 IllegalStateException（v2.33 崩溃修复） */
+    private fun toast(msg: String) {
+        val ctx = context ?: return
+        Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+    }
 
     private fun refreshStats() {
         viewLifecycleOwner.lifecycleScope.launch {
             val s = App.repo.stats()
-            b.statProjects.text = s.projects.toString()
-            b.statTypes.text = s.types.toString()
-            b.statLogs.text = s.logs.toString()
-            b.statPending.text = s.pendingFaults.toString()
+            val bb = _b ?: return@launch // 挂起恢复时 view 可能已销毁（与取消竞态），先取引用防 NPE
+            bb.statProjects.text = s.projects.toString()
+            bb.statTypes.text = s.types.toString()
+            bb.statLogs.text = s.logs.toString()
+            bb.statPending.text = s.pendingFaults.toString()
         }
     }
 
-    private fun toast(resId: Int) =
-        Toast.makeText(requireContext(), resId, Toast.LENGTH_LONG).show()
+    private fun toast(resId: Int) {
+        val ctx = context ?: return
+        Toast.makeText(ctx, resId, Toast.LENGTH_LONG).show()
+    }
 
     private fun doExport(uri: Uri, filter: ExportFilter) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 val (logs, faults) = App.repo.collectExport(filter)
                 withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                    ctx.contentResolver.openOutputStream(uri)?.use { out ->
                         XlsxWriter.write(out, ExportSheets.build(
-                            requireContext(), logs, faults,
+                            ctx, logs, faults,
                             logColumns = filter.logColumns,
                             faultColumns = filter.faultColumns
                         ))
@@ -551,10 +565,11 @@ class ToolsFragment : Fragment() {
 
     private fun doBackup(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 val json = App.repo.backupJson()
                 withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                    ctx.contentResolver.openOutputStream(uri)?.use { out ->
                         out.write(json.toByteArray(Charsets.UTF_8))
                     } ?: throw IllegalStateException("无法打开输出流")
                 }
@@ -567,15 +582,16 @@ class ToolsFragment : Fragment() {
 
     private fun doRestore(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 val text = withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openInputStream(uri)?.use { input ->
+                    ctx.contentResolver.openInputStream(uri)?.use { input ->
                         input.bufferedReader(Charsets.UTF_8).readText()
                     } ?: throw IllegalStateException("无法读取文件")
                 }
                 // 预解析统计，供确认弹窗展示
                 val counts = withContext(Dispatchers.Default) { previewBackup(text) }
-                AlertDialog.Builder(requireContext())
+                AlertDialog.Builder(ctx)
                     .setTitle(R.string.restore_confirm_title)
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setMessage(
@@ -618,10 +634,11 @@ class ToolsFragment : Fragment() {
 
     private fun doRollback(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 // 明文JSON / WebDAV gzip快照按魔数统一识别解压
                 val bytes = withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                         ?: throw IllegalStateException("无法读取文件")
                 }
                 val text = WebDavSync.decodeSnapshot(bytes)
@@ -631,7 +648,7 @@ class ToolsFragment : Fragment() {
                     showRollbackNoneDialog(p)
                     return@launch
                 }
-                AlertDialog.Builder(requireContext())
+                AlertDialog.Builder(ctx)
                     .setTitle(R.string.rollback_confirm_title)
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setMessage(
@@ -662,7 +679,8 @@ class ToolsFragment : Fragment() {
 
     /** 「备份中无本机缺失记录」时，展示备份 vs 本机日志构成，帮用户判断所选备份是否丢失前的产物 */
     private fun showRollbackNoneDialog(p: RollbackPreview) {
-        AlertDialog.Builder(requireContext())
+        val ctx = context ?: return // 已脱离（切页/销毁）时放弃弹窗，避免 requireContext 崩溃（v2.33）
+        AlertDialog.Builder(ctx)
             .setTitle(R.string.rollback_none_title)
             .setIcon(android.R.drawable.ic_dialog_info)
             .setMessage(
@@ -683,13 +701,14 @@ class ToolsFragment : Fragment() {
     /** 把被故障记录指向却显示为「通过」的日志重分类为「故障」，备注=已解决故障现象的日志重分类为「消除」 */
     private fun doFixLogTypes() {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 val r = withContext(Dispatchers.Default) { App.repo.reclassifyLogTypes(preview = true) }
                 if (r.total == 0) {
                     toast(R.string.fix_types_none)
                     return@launch
                 }
-                AlertDialog.Builder(requireContext())
+                AlertDialog.Builder(ctx)
                     .setTitle(R.string.fix_types_confirm_title)
                     .setIcon(android.R.drawable.ic_dialog_info)
                     .setMessage(getString(R.string.fix_types_confirm_msg, r.faultLogs, r.attachedFaults, r.resolutionLogs))
@@ -697,7 +716,7 @@ class ToolsFragment : Fragment() {
                         viewLifecycleOwner.lifecycleScope.launch {
                             try {
                                 val applied = App.repo.reclassifyLogTypes(preview = false)
-                                FixLogStore.record(requireContext(), applied.applied)
+                                FixLogStore.record(ctx, applied.applied)
                                 toast(getString(R.string.fix_types_ok, applied.faultLogs, applied.resolutionLogs))
                                 refreshStats()
                             } catch (e: Exception) {
@@ -716,12 +735,13 @@ class ToolsFragment : Fragment() {
     /** 撤销类型修复：把记录过的 (id→原类型) 全部还原（后手药） */
     private fun doUndoFixLogTypes() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val entries = withContext(Dispatchers.Default) { FixLogStore.all(requireContext()) }
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
+            val entries = withContext(Dispatchers.Default) { FixLogStore.all(ctx) }
             if (entries.isEmpty()) {
                 toast(R.string.fix_types_undo_none)
                 return@launch
             }
-            AlertDialog.Builder(requireContext())
+            AlertDialog.Builder(ctx)
                 .setTitle(R.string.fix_types_undo_title)
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .setMessage(getString(R.string.fix_types_undo_msg, entries.size))
@@ -729,7 +749,7 @@ class ToolsFragment : Fragment() {
                     viewLifecycleOwner.lifecycleScope.launch {
                         try {
                             val n = App.repo.undoLogTypeFix(entries)
-                            FixLogStore.clear(requireContext())
+                            FixLogStore.clear(ctx)
                             toast(getString(R.string.fix_types_undo_ok, n))
                             refreshStats()
                         } catch (e: Exception) {

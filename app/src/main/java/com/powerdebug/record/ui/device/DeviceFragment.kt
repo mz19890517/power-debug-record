@@ -64,14 +64,16 @@ class DeviceFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             App.repo.watchProjectItems().collect {
+                val bb = _b ?: return@collect // 挂起恢复时 view 可能已销毁（与取消竞态），先取引用防 NPE
                 projectAdapter.submit(it)
-                b.tvEmptyProjects.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
+                bb.tvEmptyProjects.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             App.repo.watchTypeItems().collect {
+                val bb = _b ?: return@collect // 挂起恢复时 view 可能已销毁（与取消竞态），先取引用防 NPE
                 typeAdapter.submit(it)
-                b.tvEmptyTypes.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
+                bb.tvEmptyTypes.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE
             }
         }
 
@@ -130,8 +132,19 @@ class DeviceFragment : Fragment() {
             val msg =
                 if (added == 0) getString(R.string.template_none)
                 else getString(R.string.template_done_fmt, added, item.project.name)
-            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+            toast(msg)
         }
+    }
+
+    /** Fragment 已脱离（切页/销毁）时静默放弃，避免挂起恢复后 requireContext 抛 IllegalStateException（v2.33 崩溃修复） */
+    private fun toast(msg: String, dur: Int = Toast.LENGTH_LONG) {
+        val ctx = context ?: return
+        Toast.makeText(ctx, msg, dur).show()
+    }
+
+    private fun toast(resId: Int, dur: Int = Toast.LENGTH_LONG) {
+        val ctx = context ?: return
+        Toast.makeText(ctx, resId, dur).show()
     }
 
     // ---------- 项目定向导出 ----------
@@ -160,9 +173,10 @@ class DeviceFragment : Fragment() {
     /** 多选项目：弹勾选对话框，确认后走系统"另存为"导出合并日志 */
     private fun requestMultiExport() {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             val projects = withContext(Dispatchers.IO) { App.db.projectDao().allOnce() }
             if (projects.isEmpty()) {
-                Toast.makeText(requireContext(), R.string.empty_projects, Toast.LENGTH_SHORT).show()
+                toast(R.string.empty_projects, Toast.LENGTH_SHORT)
                 return@launch
             }
             val dlgView = layoutInflater.inflate(R.layout.dialog_multi_export, null)
@@ -170,7 +184,7 @@ class DeviceFragment : Fragment() {
             val cbAll = dlgView.findViewById<android.widget.CheckBox>(R.id.cb_select_all)
             val selected = mutableSetOf<String>()
             projects.forEach { p ->
-                val cb = android.widget.CheckBox(requireContext()).apply {
+                val cb = android.widget.CheckBox(ctx).apply {
                     text = p.name
                     tag = p.id
                 }
@@ -184,16 +198,16 @@ class DeviceFragment : Fragment() {
                     (container.getChildAt(i) as? android.widget.CheckBox)?.isChecked = isChecked
                 }
             }
-            AlertDialog.Builder(requireContext())
+            AlertDialog.Builder(ctx)
                 .setTitle(R.string.multi_export_title)
                 .setView(dlgView)
                 .setPositiveButton(R.string.multi_export_go) { _, _ ->
                     if (selected.isEmpty()) {
-                        Toast.makeText(requireContext(), R.string.multi_export_none, Toast.LENGTH_SHORT).show()
+                        toast(R.string.multi_export_none, Toast.LENGTH_SHORT)
                     } else {
                         exportProjectIds = selected.toSet()
                         // 与单项目导出一致：选完项目后弹导出筛选（状态/人员/类型/日期/列选择）
-                        FilterDialogHelper.show(requireContext(), viewLifecycleOwner.lifecycleScope, currentProjectFilter) { filter ->
+                        FilterDialogHelper.show(ctx, viewLifecycleOwner.lifecycleScope, currentProjectFilter) { filter ->
                             currentProjectFilter = filter
                             exportMultiLauncher.launch("电源柜调试日志_多项目_${DT.fileStamp()}.xlsx")
                         }
@@ -207,56 +221,42 @@ class DeviceFragment : Fragment() {
     private fun doMultiExport(uri: android.net.Uri) {
         if (exportProjectIds.isEmpty()) return
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 val (logs, faults) = App.repo.collectExportForProjects(exportProjectIds, currentProjectFilter)
                 withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                    ctx.contentResolver.openOutputStream(uri)?.use { out ->
                         XlsxWriter.write(out, ExportSheets.build(
-                            requireContext(), logs, faults,
+                            ctx, logs, faults,
                             logColumns = currentProjectFilter.logColumns,
                             faultColumns = currentProjectFilter.faultColumns
                         ))
                     } ?: throw IllegalStateException("无法打开输出流")
                 }
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.export_ok, uri.lastPathSegment ?: ""),
-                    Toast.LENGTH_LONG
-                ).show()
+                toast(getString(R.string.export_ok, uri.lastPathSegment ?: ""))
             } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.op_failed, e.message ?: e.javaClass.simpleName),
-                    Toast.LENGTH_LONG
-                ).show()
+                toast(getString(R.string.op_failed, e.message ?: e.javaClass.simpleName))
             }
         }
     }
 
     private fun doExportProject(uri: android.net.Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时 Fragment 可能已脱离，用进协程时捕获的 ctx（v2.33）
             try {
                 val (logs, faults) = App.repo.collectExportOf(projectId = exportProjectId, filter = currentProjectFilter)
                 withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                    ctx.contentResolver.openOutputStream(uri)?.use { out ->
                         XlsxWriter.write(out, ExportSheets.build(
-                            requireContext(), logs, faults,
+                            ctx, logs, faults,
                             logColumns = currentProjectFilter.logColumns,
                             faultColumns = currentProjectFilter.faultColumns
                         ))
                     } ?: throw IllegalStateException("无法打开输出流")
                 }
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.export_ok, uri.lastPathSegment ?: ""),
-                    Toast.LENGTH_LONG
-                ).show()
+                toast(getString(R.string.export_ok, uri.lastPathSegment ?: ""))
             } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.op_failed, e.message ?: e.javaClass.simpleName),
-                    Toast.LENGTH_LONG
-                ).show()
+                toast(getString(R.string.op_failed, e.message ?: e.javaClass.simpleName))
             }
         }
     }
@@ -299,7 +299,7 @@ class DeviceFragment : Fragment() {
             .setPositiveButton(R.string.save) { _, _ ->
                 val name = etName.text?.toString()?.trim().orEmpty()
                 if (name.isEmpty()) {
-                    android.widget.Toast.makeText(requireContext(), R.string.name_required, android.widget.Toast.LENGTH_SHORT).show()
+                    toast(R.string.name_required, android.widget.Toast.LENGTH_SHORT)
                     return@setPositiveButton
                 }
                 val code = etCode.text?.toString()?.trim().orEmpty()
@@ -358,7 +358,7 @@ class DeviceFragment : Fragment() {
                 val lines = input.text?.toString()?.lines().orEmpty()
                 val name = lines.getOrNull(0)?.trim().orEmpty()
                 if (name.isEmpty()) {
-                    android.widget.Toast.makeText(requireContext(), R.string.name_required, android.widget.Toast.LENGTH_SHORT).show()
+                    toast(R.string.name_required, android.widget.Toast.LENGTH_SHORT)
                     return@setPositiveButton
                 }
                 val remark = lines.drop(1).joinToString("\n").trim()

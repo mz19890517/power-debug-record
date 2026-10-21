@@ -1,6 +1,7 @@
 package com.powerdebug.record.ui.log
 
 import android.app.AlertDialog
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -114,9 +115,10 @@ class LogListFragment : Fragment() {
     private fun showTimelineFromLog(item: LogListItem) {
         lifecycleScope.launch {
             val timeline = App.repo.historyTimeline(item.log.instanceId, item.log.testContent)
+            val dlgCtx = context ?: return@launch // 挂起恢复时可能已脱离，改用捕获的 ctx（v2.33）；lifecycleScope 不随 view 销毁取消，风险最高
 
             if (timeline.isEmpty()) {
-                AlertDialog.Builder(requireContext())
+                AlertDialog.Builder(dlgCtx)
                     .setTitle(getString(R.string.timeline_title, item.log.testContent))
                     .setMessage(getString(R.string.timeline_empty))
                     .setPositiveButton(R.string.close, null)
@@ -124,13 +126,13 @@ class LogListFragment : Fragment() {
                 return@launch
             }
 
-            val header = TextView(requireContext()).apply {
+            val header = TextView(dlgCtx).apply {
                 setPadding(48, 32, 48, 16)
                 textSize = 15f
             }
             val holder = arrayOfNulls<TimelineLogAdapter>(1)
-            val rv = RecyclerView(requireContext()).apply {
-                layoutManager = LinearLayoutManager(requireContext())
+            val rv = RecyclerView(dlgCtx).apply {
+                layoutManager = LinearLayoutManager(dlgCtx)
             }
             holder[0] = TimelineLogAdapter(
                 timeline,
@@ -143,7 +145,7 @@ class LogListFragment : Fragment() {
                 }
             ).also { rv.adapter = it }
 
-            val container = android.widget.LinearLayout(requireContext()).apply {
+            val container = android.widget.LinearLayout(dlgCtx).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
                 addView(header)
                 addView(rv)
@@ -159,7 +161,7 @@ class LogListFragment : Fragment() {
                 if (resCount > 0) append("消除 $resCount")
             }
 
-            AlertDialog.Builder(requireContext())
+            AlertDialog.Builder(dlgCtx)
                 .setTitle(getString(R.string.timeline_title, item.log.testContent))
                 .setView(container)
                 .setPositiveButton(R.string.close, null)
@@ -173,13 +175,14 @@ class LogListFragment : Fragment() {
         fr: com.powerdebug.record.data.db.FaultRecord,
         onSaved: () -> Unit
     ) {
-        val et = EditText(requireContext()).apply {
+        val ctx = context ?: return // 时间线弹窗仍在但 Fragment 已脱离时，放弃新弹窗避免崩溃（v2.33）
+        val et = EditText(ctx).apply {
             hint = getString(R.string.fault_solution)
             setText(fr.solution)
             minLines = 2
             gravity = android.view.Gravity.TOP
         }
-        AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(ctx)
             .setTitle(getString(R.string.timeline_solution_edit_title, log.remark))
             .setView(et)
             .setPositiveButton(R.string.save) { _, _ ->
@@ -206,10 +209,11 @@ class LogListFragment : Fragment() {
     /** 通过日志：现有三选项（重测/连项删除） */
     private fun confirmDeletePassLog(item: LogListItem) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = context ?: return@launch // 挂起恢复时可能已脱离，改用捕获的 ctx（v2.33）
             val linked = App.repo.linkedPlannedOfLog(item.log.id)
             if (linked.isEmpty()) {
                 com.powerdebug.record.util.DeleteSafeguard.confirmDelete(
-                    context = requireContext(),
+                    context = ctx,
                     title = R.string.delete,
                     message = "删除「${item.instanceName} · ${item.log.circuit.ifEmpty { getString(R.string.whole_cabinet) }}」这条通过日志？",
                     typeName = "日志"
@@ -220,7 +224,7 @@ class LogListFragment : Fragment() {
                     }
                 }
             } else {
-                AlertDialog.Builder(requireContext())
+                AlertDialog.Builder(ctx)
                     .setTitle(R.string.delete)
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setMessage(
@@ -229,7 +233,7 @@ class LogListFragment : Fragment() {
                     )
                     .setPositiveButton(R.string.del_log_retest) { _, _ ->
                         com.powerdebug.record.util.DeleteSafeguard.confirmDelete(
-                            context = requireContext(),
+                            context = ctx,
                             title = R.string.delete,
                             message = "确认删除并恢复预选待测项？",
                             typeName = "日志"
@@ -242,7 +246,7 @@ class LogListFragment : Fragment() {
                     }
                     .setNeutralButton(R.string.del_log_purge) { _, _ ->
                         com.powerdebug.record.util.DeleteSafeguard.confirmDelete(
-                            context = requireContext(),
+                            context = ctx,
                             title = R.string.delete,
                             message = "确认删除并连项删除预选待测项？",
                             typeName = "日志"
@@ -261,13 +265,14 @@ class LogListFragment : Fragment() {
 
     /** 故障日志：两选项 */
     private fun confirmDeleteFaultLog(item: LogListItem) {
-        AlertDialog.Builder(requireContext())
+        val ctx = context ?: return // 已脱离（切页/销毁）时放弃弹窗，避免 requireContext 崩溃（v2.33）
+        AlertDialog.Builder(ctx)
             .setTitle(R.string.delete)
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setMessage("删除「${item.log.testContent}」的故障日志？")
             .setPositiveButton(R.string.del_fault_and_resolution) { _, _ ->
                 com.powerdebug.record.util.DeleteSafeguard.confirmDelete(
-                    context = requireContext(),
+                    context = ctx,
                     title = R.string.delete,
                     message = "确认删除此故障生成日志和关联消除日志？",
                     typeName = "日志"
@@ -284,13 +289,14 @@ class LogListFragment : Fragment() {
 
     /** 消除日志：两选项 */
     private fun confirmDeleteResolutionLog(item: LogListItem) {
-        AlertDialog.Builder(requireContext())
+        val ctx = context ?: return // 已脱离（切页/销毁）时放弃弹窗，避免 requireContext 崩溃（v2.33）
+        AlertDialog.Builder(ctx)
             .setTitle(R.string.delete)
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setMessage("删除「${item.log.testContent}」的消除日志？")
             .setPositiveButton(R.string.del_resolution_reject) { _, _ ->
                 com.powerdebug.record.util.DeleteSafeguard.confirmDelete(
-                    context = requireContext(),
+                    context = ctx,
                     title = R.string.delete,
                     message = "确认删除消除日志并驳回？故障将恢复为待处理。",
                     typeName = "日志"
@@ -303,7 +309,7 @@ class LogListFragment : Fragment() {
             }
             .setNeutralButton(R.string.del_fault_and_resolution) { _, _ ->
                 com.powerdebug.record.util.DeleteSafeguard.confirmDelete(
-                    context = requireContext(),
+                    context = ctx,
                     title = R.string.delete,
                     message = "确认删除此故障的生成日志和消除日志？",
                     typeName = "日志"
@@ -322,29 +328,33 @@ class LogListFragment : Fragment() {
 
     private fun reload() {
         viewLifecycleOwner.lifecycleScope.launch {
+            val bb0 = _b ?: return@launch // 挂起恢复时 view 可能已销毁（与取消竞态），先取引用防 NPE
             val list = try {
                 App.repo.searchLogs(
                     projectId = selProjectId,
                     typeId = selTypeId,
                     instanceId = selInstanceId,
                     status = selStatus,
-                    circuit = b.etCircuitFilter.text?.toString()?.trim().orEmpty(),
-                    q = b.etTextSearch.text?.toString()?.trim().orEmpty()
+                    circuit = bb0.etCircuitFilter.text?.toString()?.trim().orEmpty(),
+                    q = bb0.etTextSearch.text?.toString()?.trim().orEmpty()
                 )
             } catch (e: Exception) {
                 emptyList<LogListItem>()
             }
+            val bb = _b ?: return@launch // 挂起恢复时 view 可能已销毁（与取消竞态），先取引用防 NPE
             adapter.submit(list)
-            b.tvEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+            bb.tvEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
         }
     }
 
     // ---------- 筛选联动 ----------
 
     private fun refreshProjectSpinner() {
+        val bb = _b ?: return // collect 恢复点调用时 view 可能已销毁，先取引用防 NPE（v2.33）
+        val ctx = context ?: return
         val labels = mutableListOf(getString(R.string.filter_all_projects))
         projects.forEach { labels.add(it.name) }
-        b.spProject.bind(labels) { pos ->
+        bb.spProject.bind(ctx, labels) { pos ->
             val newId = projects.getOrNull(pos - 1)?.id ?: ""
             if (newId != selProjectId) {
                 selProjectId = newId
@@ -352,13 +362,15 @@ class LogListFragment : Fragment() {
                 viewLifecycleOwner.lifecycleScope.launch { reloadInstances() }
             }
         }
-        selectSpinner(b.spProject, projects.indexOfFirst { it.id == selProjectId } + 1)
+        selectSpinner(bb.spProject, projects.indexOfFirst { it.id == selProjectId } + 1)
     }
 
     private fun refreshTypeSpinner() {
+        val bb = _b ?: return // collect 恢复点调用时 view 可能已销毁，先取引用防 NPE（v2.33）
+        val ctx = context ?: return
         val labels = mutableListOf(getString(R.string.filter_all_types))
         types.forEach { labels.add(it.name) }
-        b.spType.bind(labels) { pos ->
+        bb.spType.bind(ctx, labels) { pos ->
             val newId = types.getOrNull(pos - 1)?.id ?: ""
             if (newId != selTypeId) {
                 selTypeId = newId
@@ -366,29 +378,31 @@ class LogListFragment : Fragment() {
                 viewLifecycleOwner.lifecycleScope.launch { reloadInstances() }
             }
         }
-        selectSpinner(b.spType, types.indexOfFirst { it.id == selTypeId } + 1)
+        selectSpinner(bb.spType, types.indexOfFirst { it.id == selTypeId } + 1)
     }
 
     private suspend fun reloadInstances() {
         instances = App.db.instanceDao().byProjectAndTypeOnce(selProjectId, selTypeId)
+        val bb = _b ?: return // 挂起恢复时 view 可能已销毁（与取消竞态），先取引用防 NPE
+        val ctx = context ?: return
         val labels = mutableListOf(getString(R.string.filter_all_instances))
         instances.forEach { labels.add(it.name) }
-        b.spInstance.bind(labels) { pos ->
+        bb.spInstance.bind(ctx, labels) { pos ->
             val newId = instances.getOrNull(pos - 1)?.id ?: ""
             if (newId != selInstanceId) {
                 selInstanceId = newId
                 reload()
             }
         }
-        selectSpinner(b.spInstance, instances.indexOfFirst { it.id == selInstanceId } + 1)
+        selectSpinner(bb.spInstance, instances.indexOfFirst { it.id == selInstanceId } + 1)
         reload()
     }
 
     // ---------- Spinner 工具 ----------
 
-    private fun Spinner.bind(items: List<String>, onSel: (Int) -> Unit) {
+    private fun Spinner.bind(ctx: Context, items: List<String>, onSel: (Int) -> Unit) {
         tag = true
-        adapter = ArrayAdapter(requireContext(), R.layout.spinner_item_small, items).apply {
+        adapter = ArrayAdapter(ctx, R.layout.spinner_item_small, items).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
         onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
